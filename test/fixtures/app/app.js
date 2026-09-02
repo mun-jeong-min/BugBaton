@@ -89,7 +89,7 @@ document.querySelector('#flood-errors').addEventListener('click', () => {
   for (let index = 0; index < 80; index += 1) {
     console.error(`fixture:flood:${index}:${payload}`);
   }
-  console.error(`fixture:oversized:${'한'.repeat(12000)}`);
+  console.error(`fixture:oversized:${'\u{1F642}'.repeat(12000)}`);
   setStatus('flooded', 'Generated oversized and bounded-retention test errors');
 });
 

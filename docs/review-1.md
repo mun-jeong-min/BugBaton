@@ -1,71 +1,84 @@
-# 구현 리뷰 1 — 최신 수정본 재검증
+# Implementation Review 1: Final Revalidation
 
-- 리뷰일: 2026-09-02 (Asia/Seoul)
-- 최종 재검증 대상: `src/**/*.js`, `bin/chroma.js`, `package.json`, `README.md`, `test/e2e/chrome.test.js`
-- 방식: 읽기 전용 코드 리뷰, 단위/fixture 테스트, 격리 profile의 실제 Chrome 152 E2E
-- Fresh-eye satisfaction: 독립 E2E/경쟁 조사 서브에이전트 재감사 후 발견 사항 수정
-- 위치 표기는 줄 번호보다 symbol/test 이름을 정본으로 본다. 이 검토는 아직 commit되지 않은 최종 worktree 기준이다.
+- Review date: 2026-09-02 (Asia/Seoul)
+- Scope: `src/**/*.js`, `bin/chroma.js`, `package.json`, `README.md`, and `test/e2e/chrome.test.js`
+- Method: read-only code review, unit and fixture tests, and real Chrome 152 E2E with an isolated profile
+- Fresh-eye review: findings from independent E2E and competitive-research audits were fixed and revalidated
+- References use symbols and test names rather than fragile line numbers. This record describes the final worktree reviewed before its release commit.
 
-## 최종 판정
+## Final Verdict
 
-초기 리뷰의 가장 위험했던 결함은 대부분 닫혔다. endpoint와 browser instance identity가 연결됐고, monitor는 첫 poll과 target attach를 마친 뒤 `readyAt`을 기록한다. URL/이벤트는 durable append 전에 redaction되고 snapshot state에는 이제 ref binding만 남는다. `--clear`는 scoped marker이며, launch는 기존 CDP port를 거절하고, 출력 충돌은 fail-closed다. 실제 Chrome의 전체 진단 흐름도 통과했다.
+The highest-risk defects from the initial review are closed. Endpoint identity is
+bound to browser-instance identity. The monitor records readiness only after the
+first poll and target attachment. URLs and events are redacted before durable
+append, and snapshot state retains reference bindings rather than input values.
+`--clear` advances a scoped cursor. Launch refuses an occupied CDP port. Artifact
+output fails closed on collisions.
 
-accepted ADR의 causal doctor, 동일-boundary report, same-session restart continuity까지 최신 수정에서 닫혔다. 현재 확인된 MVP 완료 차단 항목은 없다.
+The accepted ADR's causal `doctor`, same-boundary report, and same-session restart
+continuity are implemented. No known finding blocks the MVP.
 
-## 실행 검증
+## Executed Verification
 
-- `npm run check`: exit 0, lint 통과, 41/41 pass.
-- `npm run test:e2e`: 실제 Chrome lane 최신 단일 1/1 pass(13.188초), 동일한
-  진단 구현의 동시 실행 2/2 pass(13.327초/13.025초).
-- 실제 Chrome 152 / CDP 1.3에서 `launch -> doctor -> tabs -> snapshot -> click/fill/press -> errors -> network --failed -> screenshot -> report`가 통과했다.
-- 초기 수동 trace에서도 monitor process 시작과 첫 target attach 사이 약 0.59초 간격이 있었고, 최신 코드는 이를 `monitorStartedAt`과 target별 `observationStartedAt`으로 분리한다.
+- `npm run check`: exit 0; lint passed; 42 of 42 tests passed, including the repository language guard.
+- `npm run test:e2e`: the latest single real-browser lane passed in 13.393 seconds; two concurrent runs also passed in 13.327 and 13.025 seconds.
+- Chrome 152 with CDP 1.3 passed `launch -> doctor -> tabs -> snapshot -> click/fill/press -> errors -> network --failed -> screenshot -> report`.
+- An early manual trace found about 0.59 seconds between monitor process start and first target attachment. The implementation now distinguishes `monitorStartedAt` from each target's `observationStartedAt`.
 
-## 이번 MVP 완료를 막는 잔여 항목 — 0개
+## Remaining MVP Blockers: 0
 
-마지막 fresh-eye 감사에서 같은 browser/endpoint의 session 혼입과 overlay click false-success 두 HIGH가 발견됐다. 전자는 `belongsToLiveBrowser`의 session ID 조건과 ignored evidence boundary로, 후자는 click 전 page hit-test와 `ELEMENT_OBSCURED`로 닫혔다. `test/e2e/chrome.test.js`가 두 경로를 실제 Chrome에서 재현한다. 같은 감사의 read-failure/no-store, same-URL reload/browser-binding, cleanup 완료 증명 공백도 함께 닫혔다.
+The final fresh-eye audit found two high-severity issues: evidence from a different
+session on the same browser and endpoint could be admitted, and a covered element
+could report a false-successful click. The session-ID condition in
+`belongsToLiveBrowser` plus the ignored-evidence boundary closes the first issue.
+A pre-click page hit test and `ELEMENT_OBSCURED` close the second. The real-Chrome
+E2E reproduces both paths.
 
-## 초기 C 항목 disposition
+The same audit also closed evidence-read failure without persistence, same-URL
+reload and browser binding, and incomplete cleanup proof.
 
-| ID | 최종 상태 | 최신 근거와 잔여 |
+## Critical Finding Disposition
+
+| ID | Final state | Evidence and remaining boundary |
 | --- | --- | --- |
-| C1 endpoint/session 변경 시 monitor 오재사용 | **Resolved** | `startMonitor`, `assertSessionIdentity`, `belongsToLiveBrowser`, `ignoredEventLog`가 endpoint+browser+observation session을 함께 검증한다. same-browser/different-session 실제 E2E도 이전 evidence가 0건임을 확인한다. |
-| C2 attach 전 ready/거짓 관찰 구간 | **Resolved** | process start, target observation, ready를 구분하고 write/drop/corruption 및 restart discontinuity를 기록한다. restart degradation도 새 explicit session까지 sticky하다. |
-| C3 report/durable redaction 부재 | **Resolved for declared policy** | monitor `record`는 persistence 전 redaction+UTF-8 bounding을 적용한다. snapshot state에는 values가 아닌 identity/ref binding만 저장하고 report도 value를 재차 가린다. Screenshot/accessibility name·description은 경고가 필요한 residual content이며 README가 이를 명시한다. |
-| C4 launch가 기존 Chrome을 오인 | **Resolved for identity; explicit profile risk remains** | launch는 기존 CDP port를 typed `PORT_IN_USE`로 거절하고 timeout 시 owned child를 종료하며 browser WebSocket identity hash를 저장한다. 기본 profile은 state 아래 non-default dir라 Chrome 136+ 조건을 충족한다. explicit personal profile은 warning을 내고 startup 실패도 `CDP_STARTUP_FAILED`+복구 hint로 반환한다. |
-| C5 scoped clear가 전체 evidence 삭제 | **Resolved** | `readEvents`가 target+kind cursor를 별도 atomic state에 기록하며 unit/실제 Chrome test가 다른 tab/kind 보존을 검증한다. |
-| C6 artifact overwrite/symlink/partial | **Resolved** | `captureScreenshot`은 `wx`, `commandReport`는 기존 output을 거절하고 private staging에서 완성한 뒤 atomic rename하며 실패 시 staging을 지운다. SHA-256 attachment integrity도 검증한다. |
-| C7 tab/ref/selector가 잘못된 node를 mutate | **Resolved for MVP** | ambiguous tab은 fail-closed, mutation은 multiple tabs에서 explicit `--tab`을 요구한다. selector는 `querySelectorAll` 후 exactly-one을 요구하고, ref는 endpoint+browser instance+target+URL fingerprint+loaderId+backend node로 검증한다. 이전 schema의 미바인딩 ref도 stale로 거절한다. |
-| C8 E2E가 0 tests green | **Resolved** | `test/e2e/chrome.test.js`의 전체 흐름이 단일 1회와 동시 2회 통과하고 종료/임시 경로 부재까지 assert한다. |
+| C1: monitor reuse after endpoint or session change | **Resolved** | `startMonitor`, `assertSessionIdentity`, `belongsToLiveBrowser`, and `ignoredEventLog` validate endpoint, browser, and observation-session identity together. Real-browser E2E confirms zero previous events in a different session on the same browser. |
+| C2: ready before attachment and a false observation window | **Resolved** | Process start, target observation, and readiness are distinct. Write failures, dropped events, corruption, and restart discontinuity are recorded. Restart degradation stays sticky until an explicit new session. |
+| C3: missing redaction in reports or durable state | **Resolved for the declared policy** | Monitor `record` applies redaction and UTF-8 bounding before persistence. Snapshot state stores identity and reference bindings, not values; report generation redacts again. Screenshots and accessibility names or descriptions remain content risks disclosed in the README. |
+| C4: launch mistakes an existing Chrome process for its own | **Resolved for identity; explicit profile risk remains** | Launch returns typed `PORT_IN_USE` for an occupied CDP port, terminates its owned child after timeout, and stores a browser WebSocket identity hash. The default state-owned profile satisfies Chrome 136+ isolation. A user-supplied profile triggers a warning, and startup failure returns `CDP_STARTUP_FAILED` with a recovery hint. |
+| C5: scoped clear deletes unrelated evidence | **Resolved** | `readEvents` stores per-target and per-kind cursors atomically. Unit and real-Chrome tests verify that other tabs and event kinds remain available. |
+| C6: artifact overwrite, symlink, or partial output | **Resolved** | `captureScreenshot` uses exclusive creation. `commandReport` rejects existing output, completes work in private staging, atomically renames it, and removes staging on failure. Attachment integrity uses SHA-256. |
+| C7: tab, reference, or selector mutates the wrong node | **Resolved for MVP** | Ambiguous tabs fail closed, and mutations require `--tab` when multiple tabs exist. Selectors must match exactly one element. References are bound to endpoint, browser instance, target, URL fingerprint, loader ID, and backend node. Older unbound references are rejected as stale. |
+| C8: an E2E command succeeds with zero executed tests | **Resolved** | The full real-Chrome flow passes alone and concurrently and asserts process termination plus removal of temporary paths. |
 
-## 초기 I 항목 disposition
+## Improvement Finding Disposition
 
-| ID | 최종 상태 | 최신 근거와 잔여 |
+| ID | Final state | Evidence and remaining boundary |
 | --- | --- | --- |
-| I1 failed network correlation | **Partial, non-blocking** | request map으로 transport failure에도 URL/method, duration, initiator 요약이 붙고 실제 E2E가 HTTP 503+disconnect를 검증한다. report는 10초 이내 선행 action을 `basis: temporal`로 명시하며, redirect chain/고신뢰 causal attribution은 후속이다. |
-| I2 doctor causal checks | **Resolved for MVP** | doctor helpers가 Chroma/Node, executable version, writable/private/corrupt state, endpoint, instance identity, protocol, monitor readiness, event-store health, profile isolation을 독립 checks로 내고 causal next action을 계산한다. |
-| I3 JSON/exit 계약 | **Resolved for MVP** | ADR/README/구현은 0–3 의미와 success `error:null`에 맞춰졌다. stale snapshot, selector/tab ambiguity, output collision, remote policy, endpoint/startup/monitor failure는 stable string code와 `retryable`, recovery `hint`, 해당 시 `details`를 보존한다. CDP protocol numeric code는 `details.protocolCode`에만 둔다. |
-| I4 invalid filter/command timeout | **Resolved** | `commandEvents`가 limit/time을 선검증하고 `CdpConnection`이 typed pending/open timeout과 timer cleanup을 구현한다. |
-| I5 unbounded/corrupt event store | **Resolved for MVP** | byte-bounded rotation, serialized append, write/drop health, corrupt-line cursor, restart health 승계와 sticky degradation이 추가됐다. |
-| I6 report provenance/partial | **Resolved for MVP** | shared cursor, overall status, restart discontinuity, atomic bundle, value-free action outcome history가 추가됐다. JSON과 Markdown은 같은 `report.status`를 사용한다. |
-| I7 production에 test flags 강제 | **Resolved** | `src/chrome.js:92-105`에서 background/extension flags는 explicit `--deterministic`일 때만 적용되고 E2E가 그 mode를 사용한다. report에도 mode가 남는다. |
-| I8 fill stdin/element 범위 | **Partially resolved, deferred remainder** | `fill --stdin`이 shell history/process list 노출을 피하면서 character count만 기록한다. contenteditable/select 의미는 문서화된 후속이다. |
+| I1: failed-network correlation | **Partial, non-blocking** | A request map attaches URL, method, duration, and initiator summary to transport failures. Real-browser E2E covers HTTP 503 and disconnect failures. Reports label an action within the preceding ten seconds as `basis: temporal`; redirect-chain normalization and stronger causal attribution remain future work. |
+| I2: causal doctor checks | **Resolved for MVP** | Doctor helpers independently check Chroma and Node, executable version, writable and private state, corruption, endpoint, instance identity, protocol, monitor readiness, event-store health, and profile isolation. The next action is derived from the causal failure. |
+| I3: JSON and exit contract | **Resolved for MVP** | ADR, README, and implementation agree on exit meanings `0` through `3` and `error: null` on success. Stale snapshots, selector or tab ambiguity, output collision, remote policy, endpoint or startup failure, and monitor failure keep stable string codes, retryability, a recovery hint, and bounded details. Numeric CDP codes appear only in `details.protocolCode`. |
+| I4: invalid filters and command timeout | **Resolved** | `commandEvents` validates limits and time before execution. `CdpConnection` has typed pending and open timeouts with timer cleanup. |
+| I5: unbounded or corrupt event store | **Resolved for MVP** | The implementation has byte-bounded rotation, serialized append, write and drop health, corrupt-line cursors, restart-health inheritance, and sticky degradation. |
+| I6: report provenance and partial completion | **Resolved for MVP** | Reports include a shared cursor, overall status, restart discontinuity, atomic output, and value-free action outcomes. JSON and Markdown derive from the same `report.status`. |
+| I7: test flags forced in production | **Resolved** | Background and extension flags are applied only with explicit `--deterministic`; E2E uses that mode and reports preserve it. |
+| I8: fill input and element coverage | **Partially resolved, deferred remainder** | `fill --stdin` avoids command history and process-list exposure while recording only character count. Contenteditable and select-element semantics remain documented future work. |
 
-## 후속 항목
+## Follow-Up Work
 
-- 사용자용 `stop`/idle timeout과 ownership-safe Chrome lifecycle은 계속 후속이다. E2E harness는 현재 owned process group을 정리한다.
-- Node >=22는 built-in WebSocket을 위한 의식적 채택 비용이다. 현 단계에서 Node 18 호환 layer를 넣을 이유는 없다.
-- raw CDP, broad automation, cross-browser parity는 계속 제외하는 것이 맞다. doctor/report/observation integrity가 이 프로젝트의 제품 경계다.
-- report redaction E2E는 known marker를 URL query와 input value에 심어 state dir와 textual bundle 전체에서 부재를 검증한다. Screenshot/accessible-name 잔여 위험은 명시적 경고와 수동 검토 경계로 남는다.
+- Add a user-facing `stop` or idle timeout with ownership-safe Chrome lifecycle handling. The E2E harness already cleans up its owned process group.
+- Keep Node 22 as the intentional minimum for built-in WebSocket support; a Node 18 compatibility layer is not justified at this stage.
+- Continue excluding raw CDP, broad automation, and cross-browser parity. Observation and report integrity remain the product boundary.
+- The report-redaction E2E places known markers in a query string and input value, then confirms their absence from the state directory and textual report bundle. Screenshots and accessible names remain a disclosed manual-review boundary.
 
-## 우선 수정 순서
+## Priority Order
 
-1. redirect/중복 정규화와 action-to-failure correlation 신뢰도 표기를 확장한다. 기본 timing/initiator와 temporal correlation은 구현됐다.
-2. Chrome startup/profile 실패 원인을 플랫폼별로 더 세분화한다.
-3. Linux/Windows에서 같은 real-browser lane을 실행한다.
+1. Extend redirect and duplicate normalization, and improve confidence labels for action-to-failure correlation.
+2. Classify Chrome startup and profile failures more precisely by platform.
+3. Run the same real-browser lane on Linux and Windows.
 
 ## Structured Findings
 
-- No remaining act-before-ship finding in this review scope.
-- I1 | bin: valid-but-defer | evidence: strong | ref: `src/monitor.js`;`src/cli.js` | action: defer | URL/method/timing/initiator and explicitly-temporal action correlation are present; redirect normalization remains
-- I3 | bin: resolved | evidence: strong | ref: `src/errors.js`;`src/cdp.js`;`src/operations.js`;`src/cli.js` | action: accept | public failures keep stable string codes, recovery hints, retryability, and bounded details
-- I8 | bin: valid-but-defer | evidence: strong | action: defer | stdin is supported; contenteditable/select semantics remain documented limits
+- No remaining act-before-ship finding exists in this review scope.
+- I1 | bin: valid-but-defer | evidence: strong | ref: `src/monitor.js`; `src/cli.js` | action: defer | URL, method, timing, initiator, and explicitly temporal action correlation are present; redirect normalization remains.
+- I3 | bin: resolved | evidence: strong | ref: `src/errors.js`; `src/cdp.js`; `src/operations.js`; `src/cli.js` | action: accept | Public failures keep stable string codes, recovery hints, retryability, and bounded details.
+- I8 | bin: valid-but-defer | evidence: strong | action: defer | Standard input is supported; contenteditable and select semantics remain documented limits.

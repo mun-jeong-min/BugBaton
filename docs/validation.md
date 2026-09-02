@@ -24,16 +24,16 @@ All CLI invocations in the E2E lane ran as separate processes and returned one s
 ```console
 $ npm run check
 eslint bin src test
-tests 41; pass 41; fail 0
+tests 42; pass 42; fail 0
 ```
 
-The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, and fixture HTTP/transport behavior.
+The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, and a repository-wide guard against CJK writing in owned text and paths.
 
 ### Real Chrome E2E
 
 ```console
 $ npm run test:e2e
-✔ real Chrome completes the diagnosis and report workflow (13187.5295ms)
+✔ real Chrome completes the diagnosis and report workflow (13392.79425ms)
 tests 1; pass 1; fail 0
 ```
 
@@ -78,7 +78,7 @@ concurrent run found no Chrome/Chromium/Chroma CDP listener.
 ### Package/install smoke
 
 Final `npm pack --dry-run --json` succeeded with 21 package entries, an
-approximately 67 KiB tarball, and approximately 199 KiB of unpacked content.
+approximately 60 KiB tarball, and approximately 188 KiB of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 

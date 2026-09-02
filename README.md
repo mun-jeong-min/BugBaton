@@ -44,7 +44,7 @@ that can be inspected from the shell or handed off as files.
 The positioning comes from developer-community discussions as well as formal
 research and browser-debugging guidance. The evidence, competing projects, and
 counterexamples are recorded in [problem validation and source
-limits](docs/research.md#개발자-문제-검증).
+limits](docs/research.md#developer-problem-validation).
 
 ## Why another Chrome tool?
 
