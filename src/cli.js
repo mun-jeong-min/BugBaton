@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { commandHint, parseArgs } from "./args.js";
 import { CdpConnection } from "./cdp.js";
-import { assertSafeEndpoint, browserInstanceId, browserVersion, chromeBinaryVersion, findChrome, launchChrome, listTabs, normalizeEndpoint, waitForChrome } from "./chrome.js";
+import { assertSafeEndpoint, browserInstanceId, browserVersion, chromeBinaryVersion, findChrome, findFreeLoopbackPort, launchChrome, listTabs, normalizeEndpoint, waitForChrome } from "./chrome.js";
 import { captureScreenshot, captureSnapshot, interact, readActions, readEventLog, readEvents, tabContext } from "./operations.js";
 import { readJson, sessionPaths, stateRoot, writeJson } from "./state.js";
 import { redactUrl } from "./redact.js";
@@ -465,19 +465,41 @@ async function waitForCapture(durationSeconds) {
 async function commandCapture(parsed, paths) {
   requirePositionals(parsed, 0, 0, COMMAND_HELP.capture);
   const duration = captureDuration(parsed.options.duration);
+  const captureArgs = parsed.options.port === undefined
+    ? { ...parsed, options: { ...parsed.options, port: String(await findFreeLoopbackPort()) } }
+    : parsed;
   let launched;
   let report;
   let endedBy;
   let stopped;
+  let receipt;
   try {
-    launched = await commandLaunch(parsed, paths, { captureActions: true });
+    launched = await commandLaunch(captureArgs, paths, { captureActions: true });
     endedBy = await waitForCapture(duration);
-    report = await commandReport(parsed, paths, launched.endpoint);
+    report = await commandReport(captureArgs, paths, launched.endpoint);
   } finally {
-    if (launched) stopped = await commandStop({ ...parsed, positionals: [] }, paths);
+    if (launched) stopped = await commandStop({ ...captureArgs, positionals: [] }, paths);
+  }
+  if (report && stopped) {
+    receipt = {
+      schemaVersion: 1,
+      completedAt: new Date().toISOString(),
+      endedBy,
+      bundleStatus: report.status,
+      sessionShutdown: {
+        complete: stopped.stopped,
+        monitorStopped: stopped.monitor.stopped,
+        browserOwned: stopped.browser.owned,
+        browserClosed: stopped.browser.owned ? stopped.browser.closed : null,
+      },
+      evidenceRetained: stopped.evidenceRetained,
+    };
+    await writeFile(path.join(report.path, "capture-receipt.json"), `${JSON.stringify(receipt, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+    report.files.push("capture-receipt.json");
   }
   return {
     report,
+    receipt,
     endedBy,
     stopped,
     warnings: [...(report?.warning ? [report.warning] : []), ...(stopped?.warnings ?? [])],
@@ -558,7 +580,7 @@ function buildReportObservation(monitor, tab, eventCursor, monitorRunning) {
   const targetObservationStarted = monitor?.targets?.[tab.id]?.observedAt ?? null;
   const discontinuities = [...(monitor?.discontinuities ?? [])];
   if (monitor?.redactionPolicy !== "mandatory-v1") discontinuities.push({ code: "MONITOR_VERSION_CHANGED", message: "The current monitor predates mandatory-v1 metadata." });
-  return { startedAt: targetObservationStarted, monitorStartedAt: monitor?.startedAt ?? null, boundary: eventCursor, monitorRunning, bestEffort: true, completeSinceNavigation: false, discontinuities };
+  return { startedAt: targetObservationStarted, monitorStartedAt: monitor?.startedAt ?? null, boundary: eventCursor, monitorRunning, coverage: "best-effort", bestEffort: true, completeSinceNavigation: false, discontinuities };
 }
 
 function buildTimeline(actions, errors, network) {
@@ -678,7 +700,7 @@ async function commandReport(parsed, paths, endpoint) {
     const timeline = buildTimeline(actions, errors, network);
     const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor });
     await writeFile(path.join(stagingDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`, { flag: "wx", mode: 0o600 });
-    const markdown = `# Chroma diagnostic report\n\nStatus: **${report.status}**  \nGenerated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**  \nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation is best effort and starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
+    const markdown = `# Chroma diagnostic report\n\nBundle status: **${report.status}**  \nObservation coverage: **best effort**  \nComplete since navigation: **no**  \nGenerated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**  \nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
     await writeFile(path.join(stagingDir, "README.md"), markdown, { flag: "wx", mode: 0o600 });
     await rename(stagingDir, outputDir);
     return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary: { errors: errors.length, failedNetwork: network.length, actions: actions.length, snapshotNodes: snapshot.nodes.length } };
@@ -748,9 +770,13 @@ async function executeCommand(command, parsed, paths) {
   return runConnectedCommand(command, parsed, paths, endpoint, liveVersion);
 }
 
+function countLabel(count, singular) {
+  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+}
+
 const FORMATTERS = {
   doctor: (value) => `${value.status === "ready" ? "✓" : "!"} ${value.status}\nChrome: ${value.chrome.path ?? "not found"}\nEndpoint: ${value.endpoint.reachable ? value.endpoint.browser : value.endpoint.error}\nMonitor: ${value.monitor.running ? `running (pid ${value.monitor.pid})` : "not running"}\nNext: ${value.nextAction}`,
-  capture: (value) => `Wrote report to ${value.report.path}\n${value.report.summary.errors} errors, ${value.report.summary.failedNetwork} failed requests, ${value.report.summary.actions} reproduction actions\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
+  capture: (value) => `Wrote report to ${value.report.path}\n${countLabel(value.report.summary.errors, "error")}, ${countLabel(value.report.summary.failedNetwork, "failed request")}, ${countLabel(value.report.summary.actions, "reproduction action")}\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   launch: (value) => `Chrome launched (pid ${value.chromePid})\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
   connect: (value) => `Connected to ${value.browser}\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
   stop: (value) => value.activeSession ? `Observation stopped\nOwned Chrome closed: ${value.browser.owned ? value.browser.closed ? "yes" : "no" : "not applicable"}\nEvidence retained in ${value.stateDir}` : "No active Chroma session.",
@@ -762,7 +788,7 @@ const FORMATTERS = {
   errors: (value) => value.events.length ? value.events.map((event) => `${event.observedAt} ${event.kind.toUpperCase()} ${safeSingleLine(event.message)}`).join("\n") : `No observed errors for ${safeSingleLine(value.url)}.`,
   network: (value) => value.events.length ? value.events.map((event) => `${event.status ?? "FAIL"} ${safeSingleLine(event.url ?? event.message)}`).join("\n") : `No observed failed requests for ${safeSingleLine(value.url)}.`,
   screenshot: (value) => `Wrote ${value.path} (${value.bytes} bytes)`,
-  report: (value) => `Wrote report to ${value.path}\n${value.summary.errors} errors, ${value.summary.failedNetwork} failed requests, ${value.summary.snapshotNodes} snapshot nodes`,
+  report: (value) => `Wrote report to ${value.path}\n${countLabel(value.summary.errors, "error")}, ${countLabel(value.summary.failedNetwork, "failed request")}, ${countLabel(value.summary.snapshotNodes, "snapshot node")}`,
 };
 
 export async function main(argv) {

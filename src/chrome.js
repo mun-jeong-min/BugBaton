@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { execFile, spawn } from "node:child_process";
 import process from "node:process";
 import { createHash } from "node:crypto";
+import { createServer } from "node:net";
 import { codedError } from "./errors.js";
 
 const CHROME_CANDIDATES = {
@@ -93,6 +94,20 @@ export async function waitForChrome(endpoint, timeoutMs = 10_000) {
     }
   }
   throw new Error(`Chrome did not expose CDP at ${endpoint}: ${lastError?.message ?? "timeout"}`);
+}
+
+export function findFreeLoopbackPort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      server.close((error) => {
+        if (error) reject(error);
+        else resolve(address.port);
+      });
+    });
+  });
 }
 
 export function launchChrome(binary, { port, profile, url, headless, deterministic }) {

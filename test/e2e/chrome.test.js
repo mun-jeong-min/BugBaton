@@ -823,13 +823,12 @@ test("capture records manual actions, writes evidence, and stops its session", {
   const stateDir = join(temporaryRoot, "state");
   const profileDir = join(temporaryRoot, "chrome-profile");
   const reportDir = join(temporaryRoot, "report");
-  const port = await freeLoopbackPort();
   const fixture = await startFixture();
   let chromePid;
   let monitorPid;
 
   try {
-    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--port", String(port), "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir];
+    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir];
     if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
     const capturePromise = runProcess(process.execPath, args, { timeout: 20_000 });
     const session = await poll(
@@ -844,7 +843,8 @@ test("capture records manual actions, writes evidence, and stops its session", {
       (value) => value?.sessionId === session.sessionId && value?.readyAt,
     );
     monitorPid = monitor.pid;
-    const endpoint = `http://127.0.0.1:${port}`;
+    const endpoint = session.endpoint;
+    assert.match(endpoint, /^http:\/\/127\.0\.0\.1:\d+$/);
     const tab = (await listTabs(endpoint)).find((candidate) => candidate.url.startsWith(fixture.url));
     assert.ok(tab, "capture should open the fixture tab");
     const privateValue = "CAPTURE_INPUT_MUST_NOT_PERSIST";
@@ -866,8 +866,13 @@ test("capture records manual actions, writes evidence, and stops its session", {
     assert.ok(envelope.data.report.summary.failedNetwork >= 1);
     assert.equal(envelope.data.stopped.browser.closed, true);
     assert.equal(envelope.data.stopped.monitor.stopped, true);
+    assert.equal(envelope.data.receipt.sessionShutdown.complete, true);
+    assert.ok(envelope.data.report.files.includes("capture-receipt.json"));
 
     const report = JSON.parse(await readFile(join(reportDir, "report.json"), "utf8"));
+    const receipt = JSON.parse(await readFile(join(reportDir, "capture-receipt.json"), "utf8"));
+    assert.equal(report.observation.coverage, "best-effort");
+    assert.deepEqual(receipt.sessionShutdown, { complete: true, monitorStopped: true, browserOwned: true, browserClosed: true });
     assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "click" && action.target?.ordinal));
     assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "input" && action.textLength === privateValue.length));
     assert.doesNotMatch(JSON.stringify(report), new RegExp(privateValue));
