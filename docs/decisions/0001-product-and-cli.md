@@ -31,9 +31,10 @@ stable structured output, explicit failure classes, and no terminal-only behavio
 
 ## Decision
 
-The public product promise is: **Stop being the copy-paste layer between Chrome
-and whoever fixes the bug.** Chroma preserves one Chrome reproduction as
-ordinary evidence files that can move between a person, shell, issue, or agent.
+The public product promise is: **Reproduce once. Close Chrome. Keep the
+evidence.** Chroma is a local flight recorder for a browser bug a developer can
+reproduce but has not automated. It preserves the reproduction as ordinary files
+that can move between a person, shell, issue, or agent.
 
 Chroma will be an opinionated, read-mostly incident-triage CLI for local web apps.
 Its public executable is `chroma`. It will expose a small set of task-level verbs,
@@ -42,10 +43,12 @@ not raw CDP domains, and every MVP command will support a stable `--json` mode.
 The primary workflow is:
 
 ```text
+capture -> manual reproduction -> report -> stop
+
 doctor -> launch | connect -> tabs -> snapshot
                                     -> click | fill | press
                                     -> errors + network --failed
-                                    -> screenshot + report
+                                    -> screenshot + report -> stop
 ```
 
 Read operations are the center of the product. Mutating operations are deliberately
@@ -60,8 +63,10 @@ diagnostics from a broad automation API or a one-tool-per-CDP surface. The wedge
 the complete `connect -> diagnose -> minimally reproduce -> report` loop, with one
 contract shared by a person, `jq`, CI, and a coding agent.
 
-The hypothesis has four parts:
+The hypothesis has five parts:
 
+- `capture` turns the complete first-use path into one command and records a
+  value-free manual action trail before producing and closing the evidence session.
 - `doctor` turns Chrome discovery, launch flags, endpoint reachability, profile
   isolation, and protocol compatibility into one causal diagnosis rather than a
   connection stack trace.
@@ -106,12 +111,13 @@ uses the form above.
 - Commands that accept `--tab <match>` try an exact CDP target ID first. Otherwise
   they accept an ID prefix or a substring of URL/title only when it matches exactly
   one page target; zero or multiple matches fail.
-- If `--tab` is omitted, Chroma selects the first current `page` target in the same
-  order shown by `tabs`. It never silently selects an extension, worker, iframe, or
-  DevTools target.
+- If `--tab` is omitted and exactly one current `page` target exists, Chroma uses
+  it. When multiple page targets exist, diagnostics, captures, and mutations fail
+  closed and require explicit selection. Extensions, workers, frames, and DevTools
+  targets are never implicit candidates.
 - Options and invalid inputs are rejected before a page mutation is attempted.
-- No MVP command prompts for input. A missing choice returns a typed error and a
-  concrete recovery hint.
+- `capture` alone waits for Enter or Ctrl+C in an interactive terminal. Scripts
+  use `--duration`; all other missing choices return a typed error and recovery hint.
 
 Human output is intentionally concise and may improve without a compatibility
 promise. Machine output and exit codes are the compatibility surface.
@@ -138,6 +144,25 @@ their observed values/booleans, and `nextAction` names the next useful command.
 dependency is unavailable. It is read-only apart from disposable probes removed
 before returning.
 
+### `capture`
+
+```text
+chroma capture [--url <url>] [--output <directory>] [--duration <seconds>]
+               [--chrome <path>] [--port <number>] [--profile <path>]
+               [--headless] [--deterministic]
+```
+
+`capture` is the first-use product path. It launches an isolated Chrome session,
+starts observation with manual action capture enabled, waits while the developer
+reproduces the bug, writes the same report contract as `report`, then stops the
+monitor and verified Chroma-owned Chrome process. Without `--duration`, Enter or
+Ctrl+C ends recording. Progress and the prompt stay on stderr so JSON stdout
+remains one document.
+
+Manual action records may include click, submit, control-key, element category,
+page ordinal, and input length. They never include input text or page text labels.
+These actions are contextual breadcrumbs, not a replay script or proof of cause.
+
 ### `launch`
 
 ```text
@@ -159,6 +184,8 @@ Successful `launch` returns only after the discovery endpoint is reachable and t
 session monitor is ready. Process supervision is an implementation detail, but
 subsequent commands must either reach the recorded instance or fail as a connection
 error; they must never attach to a different process that happens to reuse a port.
+`stop` closes a launched browser through a verified browser-level CDP connection;
+it never kills an unverified PID from mutable state.
 
 ### `connect`
 
@@ -189,6 +216,18 @@ does not claim pre-attachment or gap-free browser history. A stopped, restarted,
 detached, or partially attached monitor adds an explicit completeness warning.
 Chroma never presents partial history as complete page history.
 
+### `stop`
+
+```text
+chroma stop
+```
+
+`stop` ends the Chroma observation session. For `connect`, it stops observation
+but leaves the externally owned browser running. For `launch` or `capture`, it
+closes Chrome only after the live endpoint matches the saved browser-instance
+identity. Evidence remains on disk for review. The command is idempotent and does
+not create state when no session exists.
+
 ### `tabs`
 
 ```text
@@ -197,12 +236,13 @@ chroma tabs
 
 Lists current `page` targets in deterministic CDP discovery order. Human output
 contains shortened target ID, title, and URL. JSON contains the complete target ID
-and type. The first row is the implicit default for commands without `--tab`.
+and type. A single row is the safe implicit default; content-producing and
+mutating commands require `--tab` when more than one page exists.
 
 Because real Chrome instances may contain multiple or sensitive tabs, scripts and
 all mutation/report examples should pass an exact target ID obtained from `tabs`.
-The first-page default optimizes the single-local-app quick path; it is not a claim
-that the first tab is stable across browser activity.
+The single-page default optimizes the isolated local-app path without silently
+selecting among several sensitive tabs.
 
 An empty list is a successful query. A command that requires a page target then
 fails with exit 1 and suggests opening a tab or passing a
@@ -503,7 +543,7 @@ Therefore:
 
 - One binary and task-level verbs form the public API.
 - `--json` is available for every command with the versioned envelope above.
-- First `page` target is the default; `--tab` makes selection explicit.
+- A single `page` target is the safe default; multiple pages require `--tab` for diagnostics, captures, and mutations.
 - Snapshot references are opaque and bound to browser, target, and URL.
 - Stale references fail closed; no fuzzy re-resolution occurs.
 - Stdout carries results, stderr carries diagnostics.
@@ -512,6 +552,10 @@ Therefore:
 - Diagnostic capture discloses its observation window and completeness.
 - `launch` and `connect` start a local monitor that records target-tagged events as
   bounded JSONL; monitor health is part of diagnostic output.
+- `capture` is the one-command first-use loop, records value-free manual action
+  breadcrumbs, produces a report, and invokes ownership-safe shutdown.
+- `stop` removes the current session, lets its matching monitor exit, and closes
+  only a browser whose endpoint identity proves Chroma ownership.
 - One current session record is the MVP state model; a new `launch` or `connect`
   replaces it.
 - Read-focused diagnosis and bounded evidence reports, not broad automation, define
@@ -519,25 +563,19 @@ Therefore:
 
 ## Probe questions
 
-These must be answered by implementation and recorded in a follow-up ADR or an
-amendment here before the affected behavior is called stable:
+These remaining questions require measured use or a follow-up ADR before the
+affected behavior is called stable:
 
-- How should a stopped or unhealthy monitor be restarted without hiding the capture
-  gap, and what health signal distinguishes safe automatic recovery from a new
-  observation window?
-- Which Chrome/browser identity fields reliably detect endpoint/port reuse across
-  supported platforms and Chrome versions?
 - What exact accessibility snapshot limits give useful agent context while keeping
   typical output bounded?
 - Which URL query keys can be safely retained, if any, and how should user-defined
   redaction rules compose with mandatory redaction?
 - Which HTTP statuses count as failures by default, especially redirects, 304, and
   application-specific 4xx responses?
-- What cursor/checkpoint representation proves all report sections came from a
-  coherent collection boundary without pausing the inspected page?
-
-Each probe is owned by the first implementation slice that depends on it. Its answer
-must update this ADR, executable schemas/tests, and user documentation together.
+Restart gaps, endpoint reuse, and report cursor identity are no longer probes: the
+implementation records sticky restart degradation, hashes the browser WebSocket
+identity, binds evidence to a session ID, and gives report sections one event-log
+high-water boundary. Future changes must preserve those tested answers.
 
 ## Deferred decisions
 
@@ -553,8 +591,8 @@ must update this ADR, executable schemas/tests, and user documentation together.
   based on measured report gaps, not feature parity.
 - A schema version negotiation command: add only when a second schema version or a
   long-lived external consumer makes negotiation necessary.
-- Named/concurrent sessions, global command timeouts, CI-oriented
-  `--fail-on-findings`, and no-clobber/`--force` artifact policy:
+- Named/concurrent sessions, global command timeouts, and CI-oriented
+  `--fail-on-findings`:
   reopen after the core single-session diagnostic loop is verified.
 
 ## Non-goals and deliberately not doing
@@ -577,12 +615,13 @@ must update this ADR, executable schemas/tests, and user documentation together.
 | --- | --- |
 | A first-time developer can determine why Chrome cannot be used and see a concrete recovery action. | **e2e:** run `doctor` with Chrome absent, an unreachable endpoint, and a healthy endpoint; assert typed checks, exit categories, and actionable hints. |
 | A shell script and coding agent can invoke every MVP command without parsing prose. | **integration:** exercise every command with `--json`; validate exactly one stdout document against schema version 1 and ensure diagnostics do not corrupt it. |
-| Tab selection is deterministic and visible. | **e2e:** open two fixture tabs; assert list order, first-page default, exact `--tab` selection, and failure after selected target closure. |
+| Tab selection is deterministic and visible. | **e2e:** open two fixture tabs; assert list order, exact `--tab` selection, fail-closed content capture without `--tab`, and failure after selected target closure. |
 | Snapshot-driven actions cannot land on a navigated page silently. | **e2e:** snapshot, navigate to another URL, then attempt `click`, `fill`, and targeted `press`; each must return exit 1 with `STALE_REFERENCE` and make no mutation. |
 | A developer can distinguish page findings from tool failure. | **e2e:** induce a console exception and failed request; both queries return 0, an action failure returns 1, malformed input/policy refusal returns 2, and unavailable Chrome returns 3. |
 | Diagnostic results state what time range they actually cover. | **integration:** start the monitor after one fixture failure and before another; assert `observationStartedAt`, monitor state, and that results never label pre-window history complete. |
 | Cross-invocation diagnostics preserve observed events without claiming gaps are complete. | **e2e:** establish a session, trigger console/network failures from a separate interaction command, then query them from later invocations; stop/restart the monitor and assert the next query is `bestEffort` with the discontinuity identified. |
 | A report provides one coherent reproduction artifact without leaking known secrets. | **e2e:** fixture emits credentials in URL query, headers, body, console input, and a fill action; generate a report and assert mandatory redactions while retaining useful failure identity. |
+| A first-time user can capture and shut down in one command. | **e2e:** run `capture`, produce manual click and input events, assert values are absent from state/report, verify the report, then prove the monitor and owned Chrome process exited. |
 | Unsafe remote attachment is fail-closed. | **integration:** try a non-loopback endpoint without `--allow-remote`; assert no connection and exit 2. Verify explicit remote/personal-profile use carries warnings in output/report. |
 | Screenshot/report file behavior is automation-safe. | **integration:** verify explicit/default paths, manifest file list, JSON metadata, and no binary/progress bytes on stdout. |
 | Human output remains usable in pipelines. | **integration:** run commands with non-TTY stdout and `NO_COLOR`; assert bounded plain output, no cursor control, and quiet broken-pipe handling. |
@@ -602,7 +641,7 @@ Tripwires that disprove the differentiation hypothesis:
 - CLI parsing owns grammar and rejects invalid input before browser calls.
 - The session layer owns endpoint/browser identity, lifecycle metadata, safe
   reconnection, and monitor lifecycle.
-- The target layer owns first-page ordering and exact `--tab` resolution.
+- The target layer owns page ordering, exact `--tab` resolution, and fail-closed multi-tab capture.
 - Snapshot/action code owns reference binding and stale checks.
 - Capture/normalization owns target-tagged JSONL persistence, observation windows,
   monitor health, deduplication, truncation, and mandatory pre-persistence redaction.
@@ -627,9 +666,8 @@ out of the MVP.
 
 An interface/competitive fresh-eye review identified two additional risks. First,
 implicit first-page selection can be unsafe when a daily Chrome has multiple tabs.
-The MVP retains the required first-page default, but examples prefer exact target
-IDs, every result identifies its target, and pinning/mandatory explicit selection is
-a valid future change if real-use evidence shows mis-targeting. Second, a report that
+The implementation now requires explicit selection before diagnostics, captures,
+or mutations when multiple page targets exist. Second, a report that
 merely concatenates primitives is not differentiated; the manifest now requires a
 shared observation boundary, provenance, redaction state, and partial-step reasons.
 
@@ -653,8 +691,8 @@ This ADR is the canonical product and public CLI contract for the MVP. JSON sche
 help snapshots, tests, and README examples should be derived from and checked against
 it.
 
-The first implementation slice should prove the riskiest continuous loop on a real
-Chrome fixture: `doctor -> launch -> tabs -> snapshot -> stale-safe click -> errors +
-network --failed -> report`, including JSON validation, observation-window evidence,
-and mandatory redaction. `fill`, `press`, and screenshot should then reuse the same
-target, result, state, and security boundaries rather than creating parallel ones.
+The implemented slice proves both the explicit diagnostic loop and the one-command
+path on a real Chrome fixture. The release gate covers `doctor -> launch -> tabs ->
+snapshot -> stale-safe action -> errors + network --failed -> report`, plus
+`capture -> manual action evidence -> report -> ownership-safe stop`, JSON contracts,
+observation boundaries, and mandatory redaction.

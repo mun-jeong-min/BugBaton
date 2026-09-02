@@ -20,8 +20,8 @@ continuity are implemented. No known finding blocks the MVP.
 
 ## Executed Verification
 
-- `npm run check`: exit 0; lint passed; 42 of 42 tests passed, including the repository language guard.
-- `npm run test:e2e`: the latest single real-browser lane passed in 13.393 seconds; two concurrent runs also passed in 13.327 and 13.025 seconds.
+- `npm run check`: exit 0; lint passed; 44 of 44 tests passed, including the whole-repository language guard.
+- `npm run test:e2e`: both real-browser lanes passed: the advanced workflow in 13.305 seconds and one-command capture in 5.570 seconds. Two earlier concurrent advanced-workflow runs also passed in 13.327 and 13.025 seconds.
 - Chrome 152 with CDP 1.3 passed `launch -> doctor -> tabs -> snapshot -> click/fill/press -> errors -> network --failed -> screenshot -> report`.
 - An early manual trace found about 0.59 seconds between monitor process start and first target attachment. The implementation now distinguishes `monitorStartedAt` from each target's `observationStartedAt`.
 
@@ -65,7 +65,7 @@ reload and browser binding, and incomplete cleanup proof.
 
 ## Follow-Up Work
 
-- Add a user-facing `stop` or idle timeout with ownership-safe Chrome lifecycle handling. The E2E harness already cleans up its owned process group.
+- `stop` now ends observation and closes Chrome only after matching the saved browser-instance identity. An idle timeout remains optional follow-up work.
 - Keep Node 22 as the intentional minimum for built-in WebSocket support; a Node 18 compatibility layer is not justified at this stage.
 - Continue excluding raw CDP, broad automation, and cross-browser parity. Observation and report integrity remain the product boundary.
 - The report-redaction E2E places known markers in a query string and input value, then confirms their absence from the state directory and textual report bundle. Screenshots and accessible names remain a disclosed manual-review boundary.

@@ -44,11 +44,22 @@ test("doctor does not materialize state", async () => {
 });
 
 test("stable subcommand help succeeds without state", async () => {
-  for (const command of ["doctor", "launch", "connect", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]) {
+  for (const command of ["doctor", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]) {
     const result = await run([command, "--help"]);
     assert.equal(result.code, 0, `${command}: ${result.stderr}`);
     assert.match(result.stdout, /^Usage:/);
   }
+});
+
+test("stop is idempotent and does not materialize state", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "chroma-stop-test-"));
+  const state = path.join(root, "state-that-does-not-exist");
+  const result = await run(["stop", "--state-dir", state, "--json"]);
+  assert.equal(result.code, 0);
+  const json = JSON.parse(result.stdout);
+  assert.equal(json.data.activeSession, false);
+  assert.equal(json.data.stopped, true);
+  assert.equal((await readdir(root)).includes("state-that-does-not-exist"), false);
 });
 
 test("doctor diagnoses corrupt state without mutating or crashing", async () => {

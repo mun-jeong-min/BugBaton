@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { appendFile, chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { CdpConnection } from "./cdp.js";
 import { browserInstanceId, browserVersion, listTabs } from "./chrome.js";
@@ -20,6 +21,42 @@ let eventWriteQueue = Promise.resolve();
 let stateWriteQueue = Promise.resolve();
 const configuredMaxBytes = Number(process.env.CHROMA_EVENT_MAX_BYTES ?? 5 * 1024 * 1024);
 const maxEventBytes = Number.isFinite(configuredMaxBytes) && configuredMaxBytes >= 64 * 1024 ? configuredMaxBytes : 5 * 1024 * 1024;
+const ACTION_BINDING = "__chromaRecordAction";
+const ACTION_SCRIPT = `(() => {
+  if (globalThis.__chromaRecorderInstalled) return;
+  globalThis.__chromaRecorderInstalled = true;
+  const targetFacts = (target) => {
+    const element = target?.closest?.("button,a,input,textarea,select,[role]") ?? target;
+    const interactive = [...document.querySelectorAll("button,a,input,textarea,select,[role]")];
+    const index = interactive.indexOf(element);
+    return {
+      tag: element?.tagName?.toLowerCase?.() ?? null,
+      role: element?.getAttribute?.("role") ?? null,
+      type: element?.getAttribute?.("type") ?? null,
+      ordinal: index >= 0 ? index + 1 : null
+    };
+  };
+  const send = (action, target, details = {}) => {
+    if (Date.now() < (globalThis.__chromaSuppressActionUntil ?? 0)) return;
+    const binding = globalThis.${ACTION_BINDING};
+    if (typeof binding !== "function") return;
+    binding(JSON.stringify({ action, target: targetFacts(target), ...details }));
+  };
+  let inputTimer;
+  document.addEventListener("click", (event) => send("click", event.target), true);
+  document.addEventListener("input", (event) => {
+    clearTimeout(inputTimer);
+    const target = event.target;
+    const textLength = typeof target?.value === "string" ? target.value.length : null;
+    inputTimer = setTimeout(() => send("input", target, { textLength }), 250);
+  }, true);
+  document.addEventListener("submit", (event) => send("submit", event.target), true);
+  document.addEventListener("keydown", (event) => {
+    if (["Enter", "Tab", "Escape", "Backspace", "Delete", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      send("key", event.target, { key: event.key });
+    }
+  }, true);
+})()`;
 
 await mkdir(paths.root, { recursive: true, mode: 0o700 });
 const continuingSession = previousMonitor?.sessionId === session.sessionId;
@@ -115,6 +152,31 @@ function initiatorFacts(initiator) {
   return { initiatorType: initiator?.type ?? null, initiatorUrl: frame?.url ? redactUrl(frame.url) : null, initiatorLine: frame?.lineNumber ?? null };
 }
 
+function recordBrowserAction(tab, rawPayload) {
+  if (typeof rawPayload !== "string" || rawPayload.length > 4_096) return;
+  try {
+    const payload = JSON.parse(rawPayload);
+    if (!["click", "input", "key", "submit"].includes(payload.action)) return;
+    const target = Object.fromEntries(["tag", "role", "type"].map((key) => [key, typeof payload.target?.[key] === "string" ? payload.target[key].slice(0, 80) : null]));
+    if (Number.isInteger(payload.target?.ordinal) && payload.target.ordinal > 0) target.ordinal = payload.target.ordinal;
+    const details = {};
+    if (Number.isInteger(payload.textLength) && payload.textLength >= 0) details.textLength = payload.textLength;
+    if (typeof payload.key === "string" && payload.key.length <= 20) details.key = payload.key;
+    const observedAt = new Date().toISOString();
+    const actionId = createHash("sha256").update(`${session.sessionId}:${tab.id}:${observedAt}:${rawPayload}`).digest("hex").slice(0, 16);
+    return record({ kind: "user-action", source: "browser", targetId: tab.id, url: tab.url, actionId, action: payload.action, target, ...details });
+  } catch {}
+}
+
+async function enableBrowserActionCapture(cdp, tab) {
+  cdp.on("Runtime.bindingCalled", ({ name, payload }) => {
+    if (name === ACTION_BINDING) return recordBrowserAction(tab, payload);
+  });
+  await cdp.send("Runtime.addBinding", { name: ACTION_BINDING });
+  await cdp.send("Page.addScriptToEvaluateOnNewDocument", { source: ACTION_SCRIPT });
+  await cdp.send("Runtime.evaluate", { expression: ACTION_SCRIPT });
+}
+
 async function observe(tab) {
   if (connections.has(tab.id) || !tab.webSocketDebuggerUrl) return;
   try {
@@ -137,7 +199,7 @@ async function observe(tab) {
     });
     cdp.on("Log.entryAdded", ({ entry }) => {
       if (!["error", "warning"].includes(entry.level)) return;
-      return record({ kind: entry.level, source: entry.source, targetId: tab.id, url: entry.url || tab.url, sourceTimestamp: entry.timestamp ? new Date(entry.timestamp * 1_000).toISOString() : null, message: entry.text });
+      return record({ kind: entry.level, source: entry.source, targetId: tab.id, url: entry.url || tab.url, sourceTimestamp: entry.timestamp ? new Date(entry.timestamp).toISOString() : null, message: entry.text });
     });
     cdp.on("Network.loadingFailed", (event) => {
       const request = requests.get(event.requestId);
@@ -170,6 +232,10 @@ async function observe(tab) {
     });
     cdp.on("Network.loadingFinished", ({ requestId }) => requests.delete(requestId));
     for (const domain of ["Runtime", "Log", "Network"]) await cdp.send(`${domain}.enable`);
+    if (session.captureActions) {
+      await cdp.send("Page.enable");
+      await enableBrowserActionCapture(cdp, tab);
+    }
     targets[tab.id] ??= { observedAt: new Date().toISOString(), url: redactEvent({ url: tab.url }).url };
     cdp.socket.addEventListener("close", () => connections.delete(tab.id), { once: true });
     await record({ kind: "target-observed", targetId: tab.id, url: tab.url });
@@ -180,7 +246,13 @@ async function observe(tab) {
 
 async function poll() {
   try {
-    const latestSession = JSON.parse(await readFile(paths.session, "utf8"));
+    let latestSession;
+    try {
+      latestSession = JSON.parse(await readFile(paths.session, "utf8"));
+    } catch (error) {
+      if (error.code === "ENOENT") process.exit(0);
+      throw error;
+    }
     if (latestSession.sessionId !== session.sessionId || latestSession.endpoint !== session.endpoint || latestSession.browserInstanceId !== session.browserInstanceId) process.exit(0);
     const liveVersion = await browserVersion(session.endpoint);
     if (session.browserInstanceId && browserInstanceId(liveVersion) !== session.browserInstanceId) {

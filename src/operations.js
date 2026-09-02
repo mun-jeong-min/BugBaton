@@ -7,8 +7,11 @@ import { readJson, snapshotFile, writeJson } from "./state.js";
 import { redactEvent, redactUrl } from "./redact.js";
 import { codedError } from "./errors.js";
 
-export async function tabContext(endpoint, selector) {
+export async function tabContext(endpoint, selector, { requireExplicit = false } = {}) {
   const tabs = await listTabs(endpoint);
+  if (requireExplicit && !selector && tabs.length > 1) {
+    throw codedError("TAB_REQUIRED", "Multiple page tabs are open", { exitCode: 2, hint: "Pass --tab with an exact target ID before capturing page content." });
+  }
   const tab = selectTab(tabs, selector);
   return { tab, tabs };
 }
@@ -19,7 +22,7 @@ function axValue(value) {
 
 export async function captureSnapshot(endpoint, paths, tabSelector, includeAll = false) {
   const identityBefore = browserInstanceId(await browserVersion(endpoint));
-  const { tab } = await tabContext(endpoint, tabSelector);
+  const { tab } = await tabContext(endpoint, tabSelector, { requireExplicit: true });
   const result = await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
     await cdp.send("Accessibility.enable");
     const [tree, frameTree] = await Promise.all([cdp.send("Accessibility.getFullAXTree"), cdp.send("Page.getFrameTree")]);
@@ -108,6 +111,7 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
   const result = await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
     await Promise.all([cdp.send("DOM.enable"), cdp.send("Runtime.enable")]);
     if (action === "press" && !reference && !selector) {
+      await suppressBrowserActionCapture(cdp);
       await dispatchKey(cdp, key);
       return { action, targetId: tab.id, url: redactUrl(tab.url), key };
     }
@@ -136,10 +140,12 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
       assertRuntimeInvocation(hitTest, "ELEMENT_NOT_INTERACTABLE", "The selected element could not be hit-tested");
       if (hitTest.result?.value === "disabled") throw codedError("ELEMENT_DISABLED", "The selected element is disabled", { hint: "Choose an enabled element or fix the page state before retrying." });
       if (hitTest.result?.value !== "ok") throw codedError("ELEMENT_OBSCURED", "Another element covers the selected click point", { retryable: true, hint: "Dismiss the overlay, scroll the page, or choose a different visible element." });
+      await suppressBrowserActionCapture(cdp);
       await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
       await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
       inputMode = "cdp-mouse";
     } else if (action === "fill") {
+      await suppressBrowserActionCapture(cdp);
       const invocation = await cdp.send("Runtime.callFunctionOn", {
         objectId: object.objectId,
         functionDeclaration: "function(value){ const proto = this instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set; if (!setter) throw new Error('Element is not fillable'); this.focus(); setter.call(this, value); this.dispatchEvent(new Event('input', {bubbles:true})); this.dispatchEvent(new Event('change', {bubbles:true})); }",
@@ -150,6 +156,7 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
     } else if (action === "press") {
       const invocation = await cdp.send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function(){ this.focus(); }" });
       assertRuntimeInvocation(invocation, "ELEMENT_FOCUS_FAILED", "The selected element could not be focused");
+      await suppressBrowserActionCapture(cdp);
       await dispatchKey(cdp, key);
     }
     return { action, targetId: tab.id, url: redactUrl(tab.url), ref: reference ?? null, selector: selector ?? null, ...(inputMode ? { inputMode } : {}), ...(text === undefined ? {} : { textLength: text.length }), ...(key ? { key } : {}) };
@@ -160,6 +167,10 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
   await mkdir(paths.root, { recursive: true, mode: 0o700 });
   await appendFile(paths.actions, `${JSON.stringify({ ...outcome, observedAt })}\n`, { mode: 0o600 });
   return outcome;
+}
+
+function suppressBrowserActionCapture(cdp) {
+  return cdp.send("Runtime.evaluate", { expression: "globalThis.__chromaSuppressActionUntil = Date.now() + 500" });
 }
 
 function assertRuntimeInvocation(invocation, code, message) {
@@ -180,7 +191,7 @@ async function dispatchKey(cdp, key) {
 }
 
 export async function captureScreenshot(endpoint, tabSelector, output, fullPage = false) {
-  const { tab } = await tabContext(endpoint, tabSelector);
+  const { tab } = await tabContext(endpoint, tabSelector, { requireExplicit: true });
   return withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
     await cdp.send("Page.enable");
     let clip;

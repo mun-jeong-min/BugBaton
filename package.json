@@ -1,7 +1,7 @@
 {
   "name": "chroma-cdp",
   "version": "0.1.0",
-  "description": "Stop copy-pasting Chrome clues; preserve one reproduction as plain evidence files",
+  "description": "Reproduce a local Chrome bug once and keep a private, reviewable evidence bundle",
   "type": "module",
   "bin": {
     "chroma": "./bin/chroma.js"
@@ -12,7 +12,17 @@
     "docs",
     "README.md",
     "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE"
+  ],
+  "keywords": [
+    "chrome-devtools-protocol",
+    "debugging",
+    "bug-reporting",
+    "cli",
+    "developer-tools",
+    "ai-agents",
+    "observability"
   ],
   "engines": {
     "node": ">=22"

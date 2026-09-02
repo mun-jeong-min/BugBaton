@@ -13,9 +13,10 @@ test("package surface and README stay aligned with the public CLI", async () => 
   const binStat = await stat(bin);
 
   assert.equal(packageJson.bin.chroma, "./bin/chroma.js");
-  assert.equal(packageJson.description, "Stop copy-pasting Chrome clues; preserve one reproduction as plain evidence files");
+  assert.equal(packageJson.description, "Reproduce a local Chrome bug once and keep a private, reviewable evidence bundle");
   assert.equal(packageJson.dependencies, undefined, "the MVP must remain zero-runtime-dependency");
   assert.ok(packageJson.files.includes("CONTRIBUTING.md"));
+  assert.ok(packageJson.files.includes("SECURITY.md"));
   assert.ok((binStat.mode & 0o111) !== 0, "the packaged bin must be executable");
   await access(bin, constants.X_OK);
 
@@ -28,7 +29,7 @@ test("package surface and README stay aligned with the public CLI", async () => 
   assert.match(contributing, /not a general browser automation framework/i);
   assert.match(contributing, /npm run test:e2e/);
   for (const surface of [readme, contributing, cli]) {
-    assert.match(surface, /copy-paste layer between\s+Chrome and whoever fixes the bug/i,
+    assert.match(surface, /reproduce once[,.]?\s+(?:close Chrome|then write a report)/i,
       "public surfaces should retain the core product promise");
   }
 });

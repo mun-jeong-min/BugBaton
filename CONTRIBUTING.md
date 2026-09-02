@@ -2,9 +2,10 @@
 
 Thanks for helping make local web diagnosis faster and more trustworthy.
 
-Chroma's promise is simple: stop making developers the copy-paste layer between
-Chrome and whoever fixes the bug. It preserves one Chrome reproduction as
-ordinary evidence files that can move between a person, shell, issue, or agent.
+Chroma's promise is simple: reproduce once, close Chrome, and keep the evidence.
+It is a local flight recorder for a browser bug a developer can reproduce but has
+not automated, preserving ordinary evidence files that can move between a person,
+shell, issue, or agent.
 
 ## Start with the product boundary
 

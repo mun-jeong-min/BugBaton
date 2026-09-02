@@ -6,6 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { commandHint, parseArgs } from "./args.js";
+import { CdpConnection } from "./cdp.js";
 import { assertSafeEndpoint, browserInstanceId, browserVersion, chromeBinaryVersion, findChrome, launchChrome, listTabs, normalizeEndpoint, waitForChrome } from "./chrome.js";
 import { captureScreenshot, captureSnapshot, interact, readActions, readEventLog, readEvents, tabContext } from "./operations.js";
 import { readJson, sessionPaths, stateRoot, writeJson } from "./state.js";
@@ -16,9 +17,9 @@ import { codedError, errorPayload, safeSingleLine } from "./errors.js";
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
 
-const HELP = `chroma — stop being the copy-paste layer between Chrome and whoever fixes the bug
+const HELP = `chroma — reproduce once, close Chrome, and keep the evidence
 
-Preserve one Chrome reproduction as ordinary JSON, Markdown, and PNG evidence.
+A local flight recorder for a browser bug you can reproduce but have not automated.
 No account, cloud, browser extension, or MCP server.
 
 Usage:
@@ -26,8 +27,10 @@ Usage:
 
 Session:
   doctor                   Inspect local runtime and connection readiness
+  capture [--url URL]      Reproduce once, then write a report and stop
   launch [--url URL]       Launch an isolated Chrome with CDP enabled
   connect [ENDPOINT]       Remember an existing local Chrome endpoint
+  stop                     Stop observation and an owned Chrome process
   tabs                     List page targets
 
 Observe and diagnose:
@@ -55,8 +58,10 @@ Run "chroma <command> --help" for command-specific usage.`;
 
 const COMMAND_HELP = {
   doctor: "Usage: chroma doctor [--chrome PATH] [--json]\nRead-only checks for Node, Chrome, saved session, monitor, and endpoint.",
+  capture: "Usage: chroma capture [--url URL] [--output DIR] [--duration SECONDS] [--headless] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
   launch: "Usage: chroma launch [--chrome PATH] [--port 9222] [--profile PATH] [--url URL] [--headless] [--deterministic] [--json]",
   connect: "Usage: chroma connect [ENDPOINT] [--allow-remote] [--json]\nDefault endpoint: http://127.0.0.1:9222",
+  stop: "Usage: chroma stop [--json]\nStop the observation monitor and close Chrome only when Chroma launched and can verify it.",
   tabs: "Usage: chroma tabs [--endpoint URL] [--json]",
   snapshot: "Usage: chroma snapshot [--tab ID|URL|TITLE] [--all] [--json]",
   click: "Usage: chroma click @eN [--tab MATCH] [--json]\n       chroma click --selector CSS [--tab MATCH]",
@@ -298,7 +303,7 @@ async function inspectStateJson(file) {
   }
 }
 
-async function commandLaunch(parsed, paths) {
+async function commandLaunch(parsed, paths, { captureActions = false } = {}) {
   requirePositionals(parsed, 0, 0, COMMAND_HELP.launch);
   const binary = await findChrome(parsed.options.chrome);
   if (!binary) throw cliError("Chrome was not found; pass --chrome PATH or set CHROME_PATH", "CHROME_NOT_FOUND", 3);
@@ -331,7 +336,7 @@ async function commandLaunch(parsed, paths) {
     });
   }
   const instanceId = browserInstanceId(version);
-  const session = { schemaVersion: 1, sessionId: randomUUID(), endpoint, browserInstanceId: instanceId, connectedAt: new Date().toISOString(), source: "launch", chromePid: launched.pid, profile, deterministic: Boolean(parsed.options.deterministic), browser: version.Browser, protocolVersion: version["Protocol-Version"] ?? null, warnings: parsed.options.profile ? ["An explicit Chrome profile may expose authenticated sessions and be modified by page actions."] : [] };
+  const session = { schemaVersion: 1, sessionId: randomUUID(), endpoint, browserInstanceId: instanceId, connectedAt: new Date().toISOString(), source: "launch", chromePid: launched.pid, profile, deterministic: Boolean(parsed.options.deterministic), captureActions, browser: version.Browser, protocolVersion: version["Protocol-Version"] ?? null, warnings: parsed.options.profile ? ["An explicit Chrome profile may expose authenticated sessions and be modified by page actions."] : [] };
   await writeJson(paths.session, session);
   const monitor = await startMonitor(paths, endpoint, instanceId, session.sessionId, parsed.options.verbose || parsed.options.v);
   return { ...session, monitor };
@@ -352,11 +357,138 @@ async function commandConnect(parsed, paths) {
   return { ...session, monitor };
 }
 
+async function waitForPidExit(pid, timeoutMs = 3_000) {
+  if (!await pidAlive(pid)) return true;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!await pidAlive(pid)) return true;
+  }
+  return false;
+}
+
+async function waitForEndpointExit(endpoint, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await browserVersion(endpoint);
+    } catch {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
+async function closeOwnedChrome(session) {
+  if (session?.source !== "launch") return { owned: false, closed: false, reason: "external-browser" };
+  if (!await pidAlive(session.chromePid)) return { owned: true, closed: true, alreadyStopped: true, pid: session.chromePid };
+  let version;
+  try {
+    version = await browserVersion(session.endpoint);
+  } catch {
+    return { owned: true, closed: false, pid: session.chromePid, reason: "endpoint-unreachable" };
+  }
+  if (!session.browserInstanceId || browserInstanceId(version) !== session.browserInstanceId) {
+    return { owned: true, closed: false, pid: session.chromePid, reason: "browser-identity-mismatch" };
+  }
+  try {
+    const cdp = await new CdpConnection(version.webSocketDebuggerUrl).open();
+    await cdp.send("Browser.close").catch(() => {});
+    cdp.close();
+  } catch {}
+  const closed = await waitForEndpointExit(session.endpoint);
+  return { owned: true, closed, pid: session.chromePid, reason: closed ? null : "close-timeout" };
+}
+
+async function commandStop(parsed, paths) {
+  requirePositionals(parsed, 0, 0, COMMAND_HELP.stop);
+  const [session, monitor] = await Promise.all([readJson(paths.session), readJson(paths.monitor)]);
+  await rm(paths.session, { force: true });
+  const browser = await closeOwnedChrome(session);
+  const monitorStopped = !monitor?.pid || await waitForPidExit(monitor.pid);
+  if (monitorStopped) await rm(paths.monitor, { force: true });
+  const warnings = [];
+  if (!monitorStopped) warnings.push("The observation monitor did not stop before the timeout; run `chroma doctor` before starting another session.");
+  if (browser.owned && !browser.closed) warnings.push(`Chroma left its Chrome process running because it could not close it safely (${browser.reason}).`);
+  return {
+    activeSession: Boolean(session),
+    stopped: monitorStopped && (!browser.owned || browser.closed),
+    monitor: { pid: monitor?.pid ?? null, stopped: monitorStopped },
+    browser,
+    evidenceRetained: true,
+    stateDir: paths.root,
+    warnings,
+  };
+}
+
+function captureDuration(value) {
+  if (value === undefined) return null;
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 3_600) {
+    throw cliError("--duration must be a number greater than 0 and no more than 3600 seconds", "USAGE_ERROR", 2);
+  }
+  return seconds;
+}
+
+async function waitForCapture(durationSeconds) {
+  if (durationSeconds !== null) {
+    process.stderr.write(`Capturing for ${durationSeconds} seconds. Reproduce the bug in Chrome now.\n`);
+    await new Promise((resolve) => setTimeout(resolve, durationSeconds * 1_000));
+    return "duration";
+  }
+  process.stderr.write("Capturing. Reproduce the bug in Chrome, then press Enter or Ctrl+C here.\n");
+  return new Promise((resolve, reject) => {
+    let receivedInput = false;
+    const finish = (reason) => {
+      process.stdin.off("data", onData);
+      process.stdin.off("end", onEnd);
+      process.off("SIGINT", onInterrupt);
+      process.stdin.pause();
+      resolve(reason);
+    };
+    const onData = () => { receivedInput = true; finish("input"); };
+    const onEnd = () => {
+      if (receivedInput) return;
+      process.off("SIGINT", onInterrupt);
+      reject(cliError("Interactive capture needs a terminal or piped newline; use --duration SECONDS in non-interactive environments", "USAGE_ERROR", 2));
+    };
+    const onInterrupt = () => finish("interrupt");
+    process.stdin.setEncoding("utf8");
+    process.stdin.once("data", onData);
+    process.stdin.once("end", onEnd);
+    process.once("SIGINT", onInterrupt);
+    process.stdin.resume();
+  });
+}
+
+async function commandCapture(parsed, paths) {
+  requirePositionals(parsed, 0, 0, COMMAND_HELP.capture);
+  const duration = captureDuration(parsed.options.duration);
+  let launched;
+  let report;
+  let endedBy;
+  let stopped;
+  try {
+    launched = await commandLaunch(parsed, paths, { captureActions: true });
+    endedBy = await waitForCapture(duration);
+    report = await commandReport(parsed, paths, launched.endpoint);
+  } finally {
+    if (launched) stopped = await commandStop({ ...parsed, positionals: [] }, paths);
+  }
+  return {
+    report,
+    endedBy,
+    stopped,
+    warnings: [...(report?.warning ? [report.warning] : []), ...(stopped?.warnings ?? [])],
+  };
+}
+
 async function commandEvents(parsed, paths, endpoint, type, liveVersion) {
   const limit = Number(parsed.options.limit ?? 100);
   if (!Number.isInteger(limit) || limit < 1 || limit > 1_000) throw cliError("--limit must be an integer from 1 to 1000", "USAGE_ERROR", 2);
   if (parsed.options.since && Number.isNaN(Date.parse(parsed.options.since))) throw cliError("--since must be a valid ISO-8601 time", "USAGE_ERROR", 2);
-  const { tab } = await tabContext(endpoint, parsed.options.tab);
+  const { tab } = await tabContext(endpoint, parsed.options.tab, { requireExplicit: true });
   const kinds = type === "errors" ? ["error", "warning"] : ["network-failed", "network-http-error"];
   const [storedSession, storedMonitor] = await Promise.all([readJson(paths.session), readJson(paths.monitor)]);
   const instanceId = browserInstanceId(liveVersion);
@@ -385,6 +517,28 @@ function markdownInline(value) {
   return safeSingleLine(value).replace(/[\\`*_[\]<>]/g, "\\$&");
 }
 
+function actionTargetLabel(action) {
+  if (action.ref) return action.ref;
+  if (action.selector) return action.selector;
+  const tag = action.target?.tag ?? "element";
+  const ordinal = action.target?.ordinal ? ` #${action.target.ordinal}` : "";
+  const type = action.target?.type ? ` type=${action.target.type}` : "";
+  return `${tag}${ordinal}${type}`;
+}
+
+function reportTimelineMarkdown(timeline) {
+  const visible = timeline.slice(0, 30).map((entry) => {
+    if (entry.type === "action") {
+      const details = [entry.key && `key=${entry.key}`, Number.isInteger(entry.textLength) && `length=${entry.textLength}`].filter(Boolean).join(", ");
+      return `- \`${markdownInline(entry.at)}\` **${markdownInline(entry.action)}** on \`${markdownInline(actionTargetLabel(entry))}\`${details ? ` (${markdownInline(details)})` : ""}`;
+    }
+    if (entry.type === "network") return `- \`${markdownInline(entry.at)}\` **HTTP ${entry.status ?? "failure"}** \`${markdownInline(entry.method ?? "GET")} ${markdownInline(entry.url ?? entry.message ?? "unknown request")}\``;
+    return `- \`${markdownInline(entry.at)}\` **${markdownInline(entry.kind ?? "error")}** ${markdownInline(entry.message ?? "Unknown error")}`;
+  });
+  if (timeline.length > visible.length) visible.push(`- ... ${timeline.length - visible.length} more entries are available in \`report.json\`.`);
+  return visible.length ? visible.join("\n") : "No reproduction actions or findings were observed.";
+}
+
 function buildReportConnection(session, endpoint) {
   return { sessionId: session?.sessionId ?? null, endpoint, mode: session?.source ?? "override", launchedChromePid: session?.chromePid ?? null, isolatedProfile: session?.source === "launch" && !session?.warnings?.length, deterministicLaunch: session?.deterministic ?? null };
 }
@@ -408,7 +562,7 @@ function buildReportObservation(monitor, tab, eventCursor, monitorRunning) {
 }
 
 function buildTimeline(actions, errors, network) {
-  const actionEntries = actions.map((action) => ({ type: "action", at: action.startedAt ?? action.observedAt, actionId: action.actionId, action: action.action, ref: action.ref, selector: action.selector, inputMode: action.inputMode, key: action.key, textLength: action.textLength }));
+  const actionEntries = actions.map((action) => ({ type: "action", at: action.startedAt ?? action.observedAt, actionId: action.actionId, source: action.source, action: action.action, target: action.target, ref: action.ref, selector: action.selector, inputMode: action.inputMode, key: action.key, textLength: action.textLength }));
   const findings = [...errors.map((event) => ({ type: "error", ...event })), ...network.map((event) => ({ type: "network", ...event }))];
   const findingEntries = findings.map((finding) => {
     const findingTime = Date.parse(finding.observedAt);
@@ -460,7 +614,7 @@ async function commandReport(parsed, paths, endpoint) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  const { tab } = await tabContext(endpoint, parsed.options.tab);
+  const { tab } = await tabContext(endpoint, parsed.options.tab, { requireExplicit: true });
   const [storedSession, storedMonitor, version, eventLog] = await Promise.all([
     readJson(paths.session),
     readJson(paths.monitor),
@@ -493,12 +647,18 @@ async function commandReport(parsed, paths, endpoint) {
       rawSnapshot = { capturedAt: null, targetId: tab.id, url: redactUrl(tab.url), title: tab.title, nodes: [] };
       sections.snapshot = { status: "partial", reason: { code: error.code ?? "COLLECTION_FAILED", message: error.message }, capturedAt: null };
     }
-    const [errorResult, networkResult, actions] = await Promise.all([
+    const [errorResult, networkResult, cliActions, browserActionResult] = await Promise.all([
       readEvents(paths, { kinds: ["error", "warning"], tabId: tab.id, limit: 500, eventLog: evidenceLog }),
       readEvents(paths, { kinds: ["network-failed", "network-http-error"], tabId: tab.id, limit: 500, eventLog: evidenceLog }),
       monitor ? readActions(paths, tab.id, 100) : Promise.resolve([]),
+      readEvents(paths, { kinds: ["user-action"], tabId: tab.id, limit: 500, eventLog: evidenceLog }),
     ]);
-    sections.actionOutcomes = { status: "collected", reason: null, capturedAt: new Date().toISOString() };
+    const browserActions = browserActionResult.events;
+    const actions = [
+      ...cliActions.map((action) => ({ source: "chroma-cli", ...action })),
+      ...browserActions,
+    ].sort((left, right) => Date.parse(left.startedAt ?? left.observedAt) - Date.parse(right.startedAt ?? right.observedAt));
+    sections.actionOutcomes = { status: "collected", reason: null, capturedAt: new Date().toISOString(), boundaryId: evidenceLog.cursor.id };
     const errors = errorResult.events;
     const network = networkResult.events;
     const snapshot = { ...rawSnapshot, nodes: rawSnapshot.nodes.map((node) => node.value === undefined ? node : { ...node, value: "[redacted]" }) };
@@ -518,10 +678,10 @@ async function commandReport(parsed, paths, endpoint) {
     const timeline = buildTimeline(actions, errors, network);
     const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor });
     await writeFile(path.join(stagingDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`, { flag: "wx", mode: 0o600 });
-    const markdown = `# Chroma diagnostic report\n\nStatus: **${report.status}**  \nGenerated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**  \nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded action outcomes: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n> Observation is best effort and starts after \`chroma launch\` or \`chroma connect\`. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
+    const markdown = `# Chroma diagnostic report\n\nStatus: **${report.status}**  \nGenerated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**  \nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation is best effort and starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
     await writeFile(path.join(stagingDir, "README.md"), markdown, { flag: "wx", mode: 0o600 });
     await rename(stagingDir, outputDir);
-    return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary: { errors: errors.length, failedNetwork: network.length, snapshotNodes: snapshot.nodes.length } };
+    return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary: { errors: errors.length, failedNetwork: network.length, actions: actions.length, snapshotNodes: snapshot.nodes.length } };
   } catch (error) {
     await rm(stagingDir, { recursive: true, force: true });
     throw error;
@@ -576,8 +736,10 @@ async function runConnectedCommand(command, parsed, paths, endpoint, liveVersion
 
 async function executeCommand(command, parsed, paths) {
   if (command === "doctor") return doctor(parsed, paths);
+  if (command === "capture") return commandCapture(parsed, paths);
   if (command === "launch") return commandLaunch(parsed, paths);
   if (command === "connect") return commandConnect(parsed, paths);
+  if (command === "stop") return commandStop(parsed, paths);
   const { endpoint, stored } = await resolveSession(parsed, paths);
   const liveVersion = await browserVersion(endpoint).catch((error) => {
     throw codedError("CDP_UNAVAILABLE", `Cannot reach Chrome at ${endpoint}: ${error.message}`, { exitCode: 3, retryable: true, hint: "Run `chroma doctor`, then launch or connect to a reachable Chrome." });
@@ -588,8 +750,10 @@ async function executeCommand(command, parsed, paths) {
 
 const FORMATTERS = {
   doctor: (value) => `${value.status === "ready" ? "✓" : "!"} ${value.status}\nChrome: ${value.chrome.path ?? "not found"}\nEndpoint: ${value.endpoint.reachable ? value.endpoint.browser : value.endpoint.error}\nMonitor: ${value.monitor.running ? `running (pid ${value.monitor.pid})` : "not running"}\nNext: ${value.nextAction}`,
+  capture: (value) => `Wrote report to ${value.report.path}\n${value.report.summary.errors} errors, ${value.report.summary.failedNetwork} failed requests, ${value.report.summary.actions} reproduction actions\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   launch: (value) => `Chrome launched (pid ${value.chromePid})\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
   connect: (value) => `Connected to ${value.browser}\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
+  stop: (value) => value.activeSession ? `Observation stopped\nOwned Chrome closed: ${value.browser.owned ? value.browser.closed ? "yes" : "no" : "not applicable"}\nEvidence retained in ${value.stateDir}` : "No active Chroma session.",
   tabs: (value) => formatRows(value.tabs, [{ label: "ID", value: (row) => row.id.slice(0, 10) }, { label: "TITLE", value: (row) => row.title }, { label: "URL", value: (row) => row.url }]),
   snapshot: snapshotHuman,
   click: (value) => `Clicked ${value.ref ?? value.selector}`,

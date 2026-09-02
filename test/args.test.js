@@ -42,3 +42,9 @@ test("double dash permits positional values that begin with a dash", () => {
   assert.deepEqual(parsed.positionals, ["@e1", "-draft"]);
   assert.equal(parsed.options.tab, "abc");
 });
+
+test("capture accepts one-command recording options", () => {
+  const parsed = parseArgs(["capture", "--url", "http://127.0.0.1:3000", "--duration", "5", "--output", "bug-report"]);
+  assert.equal(parsed.command, "capture");
+  assert.deepEqual(parsed.options, { url: "http://127.0.0.1:3000", duration: "5", output: "bug-report" });
+});

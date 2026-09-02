@@ -13,14 +13,15 @@
 
 ## Executive Conclusion
 
-**Recommended position:**
+**Recommended position after the community re-audit:**
 
-> Stop being the copy-paste layer between Chrome and whoever fixes the bug.
+> Reproduce once. Close Chrome. Keep the evidence.
 
 Playwright automates a flow and DevTools investigates a browser. Chroma preserves
 one real-Chrome reproduction as ordinary files that can move between a person,
 shell, issue, and coding agent after the live session ends. Public copy should
-lead with repeated reproduction and manual evidence transfer, not protocol names.
+lead with the artifact surviving the browser session, not protocol names or a
+generic promise that an agent can see Chrome.
 
 The following claims are not differentiators by themselves:
 
@@ -117,6 +118,26 @@ emphasizes local-first operation, no account, no telemetry, and origin-based
 permissions. [r/SideProject announcement](https://www.reddit.com/r/SideProject/comments/1tvokj8/after_pasting_console_logs_into_my_ai_coding/)
 and [rrweb-stack source](https://github.com/Cubenest/rrweb-stack)
 
+Its launch received little visible engagement and the repository had seven stars
+at the September 2026 recheck despite a close problem statement, local-first
+architecture, npm packages, GIFs, and stronger session replay. This is important
+counterevidence: pain language, privacy, and feature breadth do not produce stars
+without a fast first experience and a sharply visible artifact payoff.
+
+**Observation:** ProofShot packages actions, screenshots, video, console output,
+and server logs into a reviewable pull-request artifact. Its March 2026 Show HN
+launch received 161 points and 106 comments, and the repository had 855 stars at
+the September recheck. Discussion repeatedly challenged it to explain why
+Playwright CLI was insufficient; positive reactions centered on reviewable proof
+and before/after evidence rather than browser control. [Show HN discussion](https://news.ycombinator.com/item?id=47499672)
+and [ProofShot source](https://github.com/AmElmo/proofshot)
+
+**Observation:** BrowserTools MCP 2.0 now offers setup diagnosis, console and
+failed-network queries, tab identity, credential scrubbing, and local screenshots.
+It had about 7,300 stars at the September recheck. Its durable wedge is access to
+the already-authenticated Chrome session through an extension, not the individual
+diagnostic primitives. [BrowserTools MCP](https://github.com/AgentDeskAI/browser-tools-mcp)
+
 **Observation:** An r/ExperiencedDevs discussion emphasizes combining logs,
 traces, breakpoints, hypotheses, and reproductions according to the problem. The
 dominant counterpoint is that debugging has no universal method. [r/ExperiencedDevs:
@@ -135,7 +156,7 @@ thread](https://www.reddit.com/r/AI_Coders/comments/1vn5c5a/whats_the_most_annoy
 These signals lead to six copy principles:
 
 1. Do not lead with "an AI can see your browser." Strong MCP and CLI tools already do that.
-2. Name the specific moment when the developer becomes a copy-paste layer for Console, Network, and screenshots.
+2. Name the specific moment between a human reproducing a bug and someone automating it.
 3. Lead with `no account`, `no cloud`, `no extension`, `no MCP server`, and ordinary JSON, Markdown, and PNG files.
 4. Say plainly that Chroma is unnecessary when a live agent can reproduce and verify the issue reliably in the same session.
 5. Do not promise automatic diagnosis or repair. Chroma preserves and hands off evidence.
@@ -147,9 +168,11 @@ These signals lead to six copy principles:
 > reproduction so I do not have to search Console and Network again or reconstruct
 > the situation for the next person.
 
-The public headline is:
+The earlier copy-paste headline accurately described the pain, but `peek` used
+nearly identical language first and did not gain meaningful distribution. The
+public headline therefore moves to the differentiated artifact outcome:
 
-> **Stop being the copy-paste layer between Chrome and whoever fixes the bug.**
+> **Reproduce once. Close Chrome. Keep the evidence.**
 
 The supporting explanation is concrete about the evidence and output:
 
@@ -170,6 +193,8 @@ The competitive comparison stays to one sentence:
 | Chrome DevTools MCP and CLI | Official MCP server and experimental daemon-backed CLI | URL or WebSocket endpoint; Chrome 144+ auto-connect | snapshot, console, network, screenshot, traces, Lighthouse, heap | CLI supports raw JSON | one CLI command per MCP tool |
 | Playwright CLI | Stateful CLI for coding agents | CDP URL or channel; extension attachment | snapshots, actions, console, requests, traces, recording, video | file and stdout oriented | a general browser automation and test CLI |
 | Playwright MCP | Accessibility-tree MCP server | CDP endpoint or extension | actions, console, network detail, traces | structured MCP results | long, stateful agent loops |
+| BrowserTools MCP | Chrome extension plus local MCP | the user's current DevTools-enabled tab | console, failed network, screenshots, audits, tab identity | structured MCP results and local files | the authenticated daily-browser and live-agent use case |
+| ProofShot | agent-run browser proof and review artifacts | managed automation flow | actions, screenshots, video, console and server logs | pull-request-oriented artifact | proof of an agent's finished change |
 | peek / rrweb-stack | Chrome extension plus local MCP | user activates the extension | DOM and action history, console, failed requests, Playwright reproduction | MCP plus local SQLite | generic "let the agent read the browser" positioning |
 | Puppeteer | JavaScript library and browser-management CLIs | `puppeteer.connect()` | broad automation and CDP access through APIs | application-defined | a thin shell around a library API |
 | chrome-remote-interface | Low-level CDP library, target CLI, and REPL | localhost:9222 or a supplied endpoint | arbitrary CDP commands and events | raw objects and REPL | a general CDP shell |
@@ -390,7 +415,7 @@ These exclusions make the local reproduction and evidence-handoff job legible.
 | --- | --- | --- |
 | Chrome and CDP only | direct control of DevTools event semantics and real Chrome | no Firefox or WebKit; recommend Playwright when those matter |
 | small, opinionated commands | a compact learning, output, and testing contract | rare protocol features are unavailable; consider a later explicit escape hatch |
-| background observer | preserves console and network evidence between commands | lifecycle complexity; expose it through `doctor` and add safe stop or idle behavior later |
+| background observer | preserves console and network evidence between commands | lifecycle complexity; expose health through `doctor` and provide ownership-safe `stop` |
 | non-destructive cursors | reports and focused queries can share evidence | bounded storage and drop counters are required |
 | default redaction | safer artifact sharing | some diagnostic detail may be hidden; sensitive expansion must be explicit and warned |
 | stable JSON schema | reliable use from `jq`, CI, and agents | schema-version and contract-test maintenance |
@@ -448,6 +473,9 @@ The choice guide should be honest:
 - [aeroxy/chrome-devtools-cli README](https://github.com/aeroxy/chrome-devtools-cli)
 - [browser-debugger-cli README](https://github.com/szymdzum/browser-debugger-cli)
 - [chrome-cdp-cli README](https://github.com/nicoster/chrome-devtools-cli)
+- [BrowserTools MCP README](https://github.com/AgentDeskAI/browser-tools-mcp)
+- [ProofShot source](https://github.com/AmElmo/proofshot)
+- [ProofShot Show HN discussion](https://news.ycombinator.com/item?id=47499672)
 
 ## Decisions and Open Questions
 

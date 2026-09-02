@@ -8,6 +8,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { withCdp } from "../../src/cdp.js";
+import { listTabs } from "../../src/chrome.js";
 
 const RUN_REAL_CHROME = process.env.CHROMA_E2E === "1";
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -21,7 +23,7 @@ function traceTiming(label, startedAt) {
 }
 
 function processLabel(executable, args) {
-  const commands = new Set(["doctor", "launch", "connect", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]);
+  const commands = new Set(["doctor", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]);
   return `${executable} ${args.find((argument) => commands.has(argument)) ?? args[0] ?? ""}`;
 }
 
@@ -810,5 +812,73 @@ test("real Chrome completes the diagnosis and report workflow", {
     await stopFixture(fixture);
     await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     await assert.rejects(stat(temporaryRoot), (error) => error.code === "ENOENT");
+  }
+});
+
+test("capture records manual actions, writes evidence, and stops its session", {
+  skip: RUN_REAL_CHROME ? false : "set CHROMA_E2E=1 to run the real-Chrome lane",
+  timeout: 30_000,
+}, async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "chroma-capture-e2e-"));
+  const stateDir = join(temporaryRoot, "state");
+  const profileDir = join(temporaryRoot, "chrome-profile");
+  const reportDir = join(temporaryRoot, "report");
+  const port = await freeLoopbackPort();
+  const fixture = await startFixture();
+  let chromePid;
+  let monitorPid;
+
+  try {
+    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--port", String(port), "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir];
+    if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
+    const capturePromise = runProcess(process.execPath, args, { timeout: 20_000 });
+    const session = await poll(
+      "capture session",
+      () => readOptionalJson(join(stateDir, "session.json")),
+      (value) => value?.captureActions === true,
+    );
+    chromePid = session.chromePid;
+    const monitor = await poll(
+      "capture monitor readiness",
+      () => readOptionalJson(join(stateDir, "monitor.json")),
+      (value) => value?.sessionId === session.sessionId && value?.readyAt,
+    );
+    monitorPid = monitor.pid;
+    const endpoint = `http://127.0.0.1:${port}`;
+    const tab = (await listTabs(endpoint)).find((candidate) => candidate.url.startsWith(fixture.url));
+    assert.ok(tab, "capture should open the fixture tab");
+    const privateValue = "CAPTURE_INPUT_MUST_NOT_PERSIST";
+    await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
+      await cdp.send("Runtime.enable");
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#request-http-error').click()" });
+      await delay(300);
+      await cdp.send("Runtime.evaluate", { expression: `(()=>{const input=document.querySelector('#message');input.value=${JSON.stringify(privateValue)};input.dispatchEvent(new Event('input',{bubbles:true}));})()` });
+      await delay(400);
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#message').value=''" });
+    });
+
+    const captureResult = await capturePromise;
+    assert.equal(captureResult.code, 0, captureResult.stderr);
+    const envelope = JSON.parse(captureResult.stdout);
+    assert.equal(envelope.command, "capture");
+    assert.equal(envelope.data.report.status, "complete");
+    assert.ok(envelope.data.report.summary.actions >= 2);
+    assert.ok(envelope.data.report.summary.failedNetwork >= 1);
+    assert.equal(envelope.data.stopped.browser.closed, true);
+    assert.equal(envelope.data.stopped.monitor.stopped, true);
+
+    const report = JSON.parse(await readFile(join(reportDir, "report.json"), "utf8"));
+    assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "click" && action.target?.ordinal));
+    assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "input" && action.textLength === privateValue.length));
+    assert.doesNotMatch(JSON.stringify(report), new RegExp(privateValue));
+    assert.ok(report.errors.every((event) => !event.sourceTimestamp || new Date(event.sourceTimestamp).getUTCFullYear() < 2100));
+    await assertStateHasNoMarker(stateDir, privateValue);
+    assert.equal(processGroupAlive(monitorPid), false);
+    assert.equal(processGroupAlive(chromePid), false);
+  } finally {
+    if (monitorPid) await stopOwnedProcessGroup(monitorPid);
+    if (chromePid) await stopOwnedProcessGroup(chromePid);
+    await stopFixture(fixture);
+    await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
