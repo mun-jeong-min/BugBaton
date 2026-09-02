@@ -23,6 +23,7 @@ continuity are implemented. No known finding blocks the MVP.
 - `npm run check`: exit 0; lint passed; 44 of 44 tests passed, including the whole-repository language guard.
 - `npm run test:e2e`: both real-browser lanes passed: the advanced workflow in 13.305 seconds and one-command capture in 5.570 seconds. Two earlier concurrent advanced-workflow runs also passed in 13.327 and 13.025 seconds.
 - Public GitHub Actions passed quality checks on Ubuntu, macOS, and Windows plus real-Chrome E2E on Ubuntu and macOS.
+- A real-Chrome smoke run passed the packaged, loopback-only `demo` through report generation and verified shutdown without an existing application.
 - Chrome 152 with CDP 1.3 passed `launch -> doctor -> tabs -> snapshot -> click/fill/press -> errors -> network --failed -> screenshot -> report`.
 - An early manual trace found about 0.59 seconds between monitor process start and first target attachment. The implementation now distinguishes `monitorStartedAt` from each target's `observationStartedAt`.
 

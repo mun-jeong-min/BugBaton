@@ -43,6 +43,8 @@ not raw CDP domains, and every MVP command will support a stable `--json` mode.
 The primary workflow is:
 
 ```text
+demo -> packaged local failure -> capture -> report -> stop
+
 capture -> manual reproduction -> report -> stop
 
 doctor -> launch | connect -> tabs -> snapshot
@@ -65,6 +67,8 @@ contract shared by a person, `jq`, CI, and a coding agent.
 
 The hypothesis has five parts:
 
+- `demo` makes the first proof self-contained by serving an intentional failure
+  page on a temporary loopback port and then running the real capture path.
 - `capture` turns the complete first-use path into one command and records a
   value-free manual action trail before producing and closing the evidence session.
 - `doctor` turns Chrome discovery, launch flags, endpoint reachability, profile
@@ -144,6 +148,20 @@ their observed values/booleans, and `nextAction` names the next useful command.
 dependency is unavailable. It is read-only apart from disposable probes removed
 before returning.
 
+### `demo`
+
+```text
+chroma demo [--output <directory>] [--duration <seconds>]
+            [--chrome <path>] [--port <number>] [--profile <path>]
+            [--headless] [--deterministic]
+```
+
+`demo` starts a packaged local-only page with intentional HTTP 503 and console
+error controls, runs the normal `capture` path, and closes the temporary server.
+It exists only to prove the complete product loop without requiring an app,
+account, clone, or external service. Its report contract is identical to
+`capture`.
+
 ### `capture`
 
 ```text
@@ -157,7 +175,9 @@ starts observation with manual action capture enabled, waits while the developer
 reproduces the bug, writes the same report contract as `report`, then stops the
 monitor and verified Chroma-owned Chrome process. Without `--duration`, Enter or
 Ctrl+C ends recording. Progress and the prompt stay on stderr so JSON stdout
-remains one document.
+remains one document. When `--port` and `--output` are omitted, it chooses a free
+loopback CDP port and a unique report directory. A post-report
+`capture-receipt.json` records whether monitor and browser shutdown completed.
 
 Manual action records may include click, submit, control-key, element category,
 page ordinal, and input length. They never include input text or page text labels.
@@ -622,6 +642,7 @@ high-water boundary. Future changes must preserve those tested answers.
 | Cross-invocation diagnostics preserve observed events without claiming gaps are complete. | **e2e:** establish a session, trigger console/network failures from a separate interaction command, then query them from later invocations; stop/restart the monitor and assert the next query is `bestEffort` with the discontinuity identified. |
 | A report provides one coherent reproduction artifact without leaking known secrets. | **e2e:** fixture emits credentials in URL query, headers, body, console input, and a fill action; generate a report and assert mandatory redactions while retaining useful failure identity. |
 | A first-time user can capture and shut down in one command. | **e2e:** run `capture`, produce manual click and input events, assert values are absent from state/report, verify the report, then prove the monitor and owned Chrome process exited. |
+| A visitor can prove the loop without an existing app. | **integration + real-browser smoke:** run `demo`; verify the packaged page serves only on loopback, exposes one intentional HTTP 503, produces a normal capture bundle, and shuts down its temporary server, monitor, and browser. |
 | Unsafe remote attachment is fail-closed. | **integration:** try a non-loopback endpoint without `--allow-remote`; assert no connection and exit 2. Verify explicit remote/personal-profile use carries warnings in output/report. |
 | Screenshot/report file behavior is automation-safe. | **integration:** verify explicit/default paths, manifest file list, JSON metadata, and no binary/progress bytes on stdout. |
 | Human output remains usable in pipelines. | **integration:** run commands with non-TTY stdout and `NO_COLOR`; assert bounded plain output, no cursor control, and quiet broken-pipe handling. |

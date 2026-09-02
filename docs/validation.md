@@ -26,10 +26,10 @@ All CLI invocations in the E2E lane ran as separate processes and returned one s
 ```console
 $ npm run check
 eslint bin src test
-tests 44; pass 44; fail 0
+tests 46; pass 46; fail 0
 ```
 
-The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, and a repository-wide guard against CJK writing in owned text and paths.
+The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, the packaged demo server, committed-sample integrity, and a repository-wide guard against CJK writing in owned text and paths.
 
 ### Real Chrome E2E
 
@@ -75,6 +75,8 @@ End-to-end assertions include:
   events, a complete report, and browser/monitor shutdown after identity checks;
 - browser log timestamps remain in a plausible wall-clock range rather than
   inheriting an incorrect milliseconds conversion.
+- automatic capture port selection and a post-report receipt proving monitor and
+  owned-browser shutdown.
 
 The same diagnostic implementation also passed two instances concurrently
 (workflow times 13327.176ms and 13024.821ms) before the positioning-only
@@ -88,8 +90,8 @@ lane also passed on both Ubuntu and macOS.
 
 ### Package/install smoke
 
-Final `npm pack --dry-run --json` succeeded with 25 package entries, an
-approximately 140 KiB tarball, and approximately 298 KiB of unpacked content.
+Final `npm pack --dry-run --json` succeeded with 27 package entries, an
+approximately 143 KiB tarball, and approximately 307 KiB of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 
@@ -97,6 +99,12 @@ A final production-only local install into an isolated `/tmp` prefix succeeded
 in 125ms with one package and no runtime dependencies. The installed binary then
 passed `chroma --version` (`0.1.0`), `chroma fill --help`, and read-only
 `chroma doctor --json`. The temporary install was removed afterward.
+
+The packaged `chroma demo --headless --deterministic --duration 1` path also
+completed against a real Chrome, wrote JSON/Markdown/PNG plus
+`capture-receipt.json`, and verified monitor and browser shutdown. The normal
+interactive demo presents three safe actions so the resulting report contains a
+visible click-to-failure trail.
 
 ### Manual dogfood loop
 

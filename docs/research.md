@@ -434,15 +434,11 @@ current execution evidence are recorded in [`validation.md`](validation.md).
 
 ## Open-Source Adoption
 
-The README should demonstrate value in under 30 seconds with a broken local
-fixture and a short workflow:
+The README now demonstrates value in under 30 seconds with the packaged,
+loopback-only failure page and the real capture path:
 
 ```sh
-chroma doctor
-chroma connect
-chroma errors
-chroma network --failed
-chroma report --output .chroma/report
+chroma demo
 ```
 
 The report example should connect an API failure, its nearby user action, a
@@ -453,6 +449,10 @@ The choice guide should be honest:
 - use Chrome DevTools MCP for deep live investigation, performance, heap, or Lighthouse work;
 - use `bdg` or chrome-remote-interface for arbitrary CDP commands;
 - use Chroma to preserve and hand off one local-app reproduction.
+
+The demo is deliberately not a mock report: it starts the same monitor, Chrome,
+manual-action capture, report, and ownership-safe shutdown path used on a real
+local app.
 
 ## Primary Sources
 

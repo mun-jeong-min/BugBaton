@@ -26,22 +26,23 @@ input input #4 (length=14; value never persisted)
 submit form
 ```
 
-## Try it on your running local app
+## See it work in 30 seconds
 
-Start your app first, then replace the URL below. This pre-release command pins
-the last verified implementation commit and needs no clone or global install:
+Run the packaged local-only demo. It needs no existing app, clone, account, or
+global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#c15722e -- \
-  chroma capture --url http://127.0.0.1:3000
+npm exec --yes --package=github:mun-jeong-min/Chroma#1547fbb -- chroma demo
 ```
 
-Reproduce the bug in the Chrome window, then press Enter. Chroma captures the
-report and safely closes only the browser process it launched and verified.
+Follow the three steps in the Chrome window, then press Enter. Chroma captures
+the report and safely closes only the browser process it launched and verified.
 
 ```console
-$ chroma capture --url http://127.0.0.1:3000
+$ chroma demo
+Demo ready at http://127.0.0.1:61990. Follow the three steps in Chrome.
 Capturing. Reproduce the bug in Chrome, then press Enter or Ctrl+C here.
+Demo complete
 Wrote report to ./chroma-report-2026-09-02T12-59-56-058Z-6808
 3 errors, 1 failed request, 4 reproduction actions
 Chrome session stopped: yes
@@ -52,6 +53,15 @@ so the same command can be run again. Use `--duration 30` instead of Enter for
 scripts and coding agents. Every command also has a versioned `--json` envelope.
 
 ![The page screenshot attached to the real sample report](docs/example-report/screenshot.png)
+
+### Use it on your app
+
+Start your local app, replace the URL, and run the same capture loop:
+
+```sh
+npm exec --yes --package=github:mun-jeong-min/Chroma#1547fbb -- \
+  chroma capture --url http://127.0.0.1:3000
+```
 
 > **Pre-release 0.1.0:** install directly from GitHub for now. The full local
 > lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
@@ -123,7 +133,7 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/Chroma
+npm install --global github:mun-jeong-min/Chroma#1547fbb
 chroma --version
 ```
 
