@@ -14,33 +14,44 @@ files and shuts the session down.
 
 No account. No cloud. No browser extension. No MCP server. No telemetry.
 
-![A real Chroma fixture report screenshot](docs/example-report/screenshot.png)
-
 **[Open the real sample report](docs/example-report/README.md)** ·
-**[Inspect its versioned JSON](docs/example-report/report.json)**
+**[Inspect its versioned JSON](docs/example-report/report.json)** ·
+**[Verify its shutdown receipt](docs/example-report/capture-receipt.json)**
 
-## Try the whole loop
+```text
+click button #7
+  -> HTTP 503 GET /api/http-error
+  -> console error: fixture:request-failed
+input input #4 (length=14; value never persisted)
+submit form
+```
 
-Run the current main branch without cloning or installing globally:
+## Try it on your running local app
+
+Start your app first, then replace the URL below. This pre-release command pins
+the last verified implementation commit and needs no clone or global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma -- \
-  chroma capture --url http://127.0.0.1:3000 --output ./chroma-report
+npm exec --yes --package=github:mun-jeong-min/Chroma#c15722e -- \
+  chroma capture --url http://127.0.0.1:3000
 ```
 
 Reproduce the bug in the Chrome window, then press Enter. Chroma captures the
 report and safely closes only the browser process it launched and verified.
 
 ```console
-$ chroma capture --url http://127.0.0.1:3000 --output ./chroma-report
+$ chroma capture --url http://127.0.0.1:3000
 Capturing. Reproduce the bug in Chrome, then press Enter or Ctrl+C here.
-Wrote report to ./chroma-report
-2 errors, 2 failed requests, 4 reproduction actions
+Wrote report to ./chroma-report-2026-09-02T12-59-56-058Z-6808
+3 errors, 1 failed request, 4 reproduction actions
 Chrome session stopped: yes
 ```
 
-Use `--duration 30` instead of Enter for scripts and coding agents. Every command
-also has a versioned `--json` envelope.
+`capture` picks a free loopback CDP port and a unique report path automatically,
+so the same command can be run again. Use `--duration 30` instead of Enter for
+scripts and coding agents. Every command also has a versioned `--json` envelope.
+
+![The page screenshot attached to the real sample report](docs/example-report/screenshot.png)
 
 > **Pre-release 0.1.0:** install directly from GitHub for now. The full local
 > lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
@@ -131,8 +142,22 @@ Or run without installing:
 node bin/chroma.js --help
 ```
 
-The package name `chroma-cdp` is reserved for the first npm release but is not
+The package name `chroma-cdp` is intended for the first npm release but is not
 published yet.
+
+## Reuse a signed-in development profile
+
+Some local bugs need authentication. Use a dedicated reusable profile instead
+of your everyday Chrome profile:
+
+```sh
+chroma capture --profile "$HOME/.local/share/chroma/profiles/my-app" \
+  --url http://127.0.0.1:3000
+```
+
+Log in during the first capture and reuse the same path later. Chroma warns when
+an explicit profile is used because pages can read and modify that profile; never
+point it at Chrome's default user-data directory.
 
 ## Advanced workflow
 
@@ -184,6 +209,7 @@ Recent Chrome versions require a non-default `--user-data-dir` for remote debugg
 | Command | Purpose |
 | --- | --- |
 | `doctor` | Read-only runtime, Chrome, state, endpoint, and monitor diagnosis |
+| `demo` | Run the full capture loop against a packaged, local-only failure page |
 | `capture` | Launch, record a privacy-safe manual reproduction, report, and stop |
 | `launch` | Start isolated Chrome on loopback and begin observation |
 | `connect [ENDPOINT]` | Save and verify an existing endpoint, then begin observation |

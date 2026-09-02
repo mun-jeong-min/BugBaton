@@ -44,7 +44,7 @@ test("doctor does not materialize state", async () => {
 });
 
 test("stable subcommand help succeeds without state", async () => {
-  for (const command of ["doctor", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]) {
+  for (const command of ["doctor", "demo", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]) {
     const result = await run([command, "--help"]);
     assert.equal(result.code, 0, `${command}: ${result.stderr}`);
     assert.match(result.stdout, /^Usage:/);

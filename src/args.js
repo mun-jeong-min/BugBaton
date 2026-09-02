@@ -10,6 +10,7 @@ const GLOBAL = {
 
 export const COMMAND_OPTIONS = {
   doctor: { "--chrome": "value" },
+  demo: { "--chrome": "value", "--port": "value", "--profile": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean" },
   launch: { "--chrome": "value", "--port": "value", "--profile": "value", "--url": "value", "--headless": "boolean", "--deterministic": "boolean" },
   capture: { "--chrome": "value", "--port": "value", "--profile": "value", "--url": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean" },
   connect: {},

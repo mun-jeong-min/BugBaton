@@ -13,6 +13,7 @@ import { readJson, sessionPaths, stateRoot, writeJson } from "./state.js";
 import { redactUrl } from "./redact.js";
 import { eventStoreHealth } from "./event-health.js";
 import { codedError, errorPayload, safeSingleLine } from "./errors.js";
+import { startDemoServer } from "./demo.js";
 
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
@@ -27,6 +28,7 @@ Usage:
 
 Session:
   doctor                   Inspect local runtime and connection readiness
+  demo                     Run a self-contained capture against a safe local bug
   capture [--url URL]      Reproduce once, then write a report and stop
   launch [--url URL]       Launch an isolated Chrome with CDP enabled
   connect [ENDPOINT]       Remember an existing local Chrome endpoint
@@ -58,6 +60,7 @@ Run "chroma <command> --help" for command-specific usage.`;
 
 const COMMAND_HELP = {
   doctor: "Usage: chroma doctor [--chrome PATH] [--json]\nRead-only checks for Node, Chrome, saved session, monitor, and endpoint.",
+  demo: "Usage: chroma demo [--output DIR] [--duration SECONDS] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nOpen a packaged local failure page, capture your actions and diagnostics, write a report, and stop. No existing app or network service is required.",
   capture: "Usage: chroma capture [--url URL] [--output DIR] [--duration SECONDS] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. A free loopback CDP port and unique report directory are selected by default. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
   launch: "Usage: chroma launch [--chrome PATH] [--port 9222] [--profile PATH] [--url URL] [--headless] [--deterministic] [--json]",
   connect: "Usage: chroma connect [ENDPOINT] [--allow-remote] [--json]\nDefault endpoint: http://127.0.0.1:9222",
@@ -506,6 +509,18 @@ async function commandCapture(parsed, paths) {
   };
 }
 
+async function commandDemo(parsed, paths) {
+  requirePositionals(parsed, 0, 0, COMMAND_HELP.demo);
+  const demo = await startDemoServer();
+  process.stderr.write(`Demo ready at ${demo.url}. Follow the three steps in Chrome.\n`);
+  try {
+    const capture = await commandCapture({ ...parsed, options: { ...parsed.options, url: demo.url } }, paths);
+    return { ...capture, demo: { url: demo.url, localOnly: true } };
+  } finally {
+    await demo.close();
+  }
+}
+
 async function commandEvents(parsed, paths, endpoint, type, liveVersion) {
   const limit = Number(parsed.options.limit ?? 100);
   if (!Number.isInteger(limit) || limit < 1 || limit > 1_000) throw cliError("--limit must be an integer from 1 to 1000", "USAGE_ERROR", 2);
@@ -758,6 +773,7 @@ async function runConnectedCommand(command, parsed, paths, endpoint, liveVersion
 
 async function executeCommand(command, parsed, paths) {
   if (command === "doctor") return doctor(parsed, paths);
+  if (command === "demo") return commandDemo(parsed, paths);
   if (command === "capture") return commandCapture(parsed, paths);
   if (command === "launch") return commandLaunch(parsed, paths);
   if (command === "connect") return commandConnect(parsed, paths);
@@ -776,6 +792,7 @@ function countLabel(count, singular) {
 
 const FORMATTERS = {
   doctor: (value) => `${value.status === "ready" ? "✓" : "!"} ${value.status}\nChrome: ${value.chrome.path ?? "not found"}\nEndpoint: ${value.endpoint.reachable ? value.endpoint.browser : value.endpoint.error}\nMonitor: ${value.monitor.running ? `running (pid ${value.monitor.pid})` : "not running"}\nNext: ${value.nextAction}`,
+  demo: (value) => `Demo complete\nWrote report to ${value.report.path}\n${countLabel(value.report.summary.errors, "error")}, ${countLabel(value.report.summary.failedNetwork, "failed request")}, ${countLabel(value.report.summary.actions, "reproduction action")}\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   capture: (value) => `Wrote report to ${value.report.path}\n${countLabel(value.report.summary.errors, "error")}, ${countLabel(value.report.summary.failedNetwork, "failed request")}, ${countLabel(value.report.summary.actions, "reproduction action")}\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   launch: (value) => `Chrome launched (pid ${value.chromePid})\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
   connect: (value) => `Connected to ${value.browser}\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
