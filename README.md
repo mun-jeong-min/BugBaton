@@ -43,8 +43,8 @@ Use `--duration 30` instead of Enter for scripts and coding agents. Every comman
 also has a versioned `--json` envelope.
 
 > **Pre-release 0.1.0:** install directly from GitHub for now. The full local
-> lane is verified on Chrome 152/macOS; public Linux CI and the first npm release
-> are being prepared.
+> lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
+> Linux and macOS plus the quality gate on Windows; the first npm release is next.
 
 ## Why this instead of another browser controller?
 

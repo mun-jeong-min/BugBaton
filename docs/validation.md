@@ -82,6 +82,10 @@ README/help edits. This proves dynamic ports, browser/session state, evidence,
 artifacts, and cleanup do not cross streams. A listener probe after the
 concurrent run found no Chrome/Chromium/Chroma CDP listener.
 
+The public GitHub Actions run passed the complete quality matrix on Ubuntu
+(Node 22 and 24), macOS (Node 22), and Windows (Node 22). The real-Chrome E2E
+lane also passed on both Ubuntu and macOS.
+
 ### Package/install smoke
 
 Final `npm pack --dry-run --json` succeeded with 25 package entries, an
@@ -134,5 +138,5 @@ The manual report captured seven browser/runtime/console findings, two failed re
 1. Improve the report's explicitly low-confidence temporal correlation with stronger CDP initiator evidence.
 2. Add redirect-chain and duplicate-occurrence normalization; request durations and initiator locations are already recorded.
 3. Add contenteditable and select/combobox support only where fixtures prove the semantics; stdin fill is now available for secret values.
-4. Confirm the public real-browser lane on Linux and macOS, then add Windows Chrome E2E; Windows discovery is implemented but unverified.
+4. Add Windows Chrome E2E; Windows discovery and the quality gate pass, but the real-browser lane remains unverified.
 5. Measure diagnosis time and report usefulness on representative open-source local apps before expanding automation verbs.
