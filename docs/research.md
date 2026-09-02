@@ -15,13 +15,13 @@
 
 **추론/제안 — 포지셔닝:**
 
-> 웹앱 버그는 한 번만 재현하고, 문제를 고칠 모든 사람이 같은 브라우저
-> 증거를 보게 한다.
+> 개발자가 Chrome과 버그를 고칠 사람 사이의 copy-paste layer가 되지
+> 않게 한다.
 
 Playwright가 flow를 자동화하고 DevTools가 브라우저를 조사한다면,
-Chroma는 한 번의 실제 Chrome 재현을 보존해 다음 개발자나 코딩
-에이전트가 처음부터 다시 시작하지 않게 한다. 공개 문구는 기능명보다
-개발자가 겪는 반복을 먼저 말해야 한다.
+Chroma는 실제 Chrome 재현을 평범한 파일로 보존해 세션이 끝난 뒤에도
+사람, shell, issue, coding agent 사이를 이동하게 한다. 공개 문구는
+기능명보다 개발자가 겪는 복사·붙여넣기와 반복 재현을 먼저 말해야 한다.
 
 단순히 “MCP보다 가벼운 CDP CLI”, “기존 Chrome에 연결”, “접근성 스냅샷으로 클릭”, “JSON 출력”을 내세워서는 차별화되지 않는다. 공식 Chrome DevTools MCP에도 실험적 CLI가 있고, Playwright CLI도 기존 Chrome 연결과 콘솔·네트워크 관찰을 제공한다. 커뮤니티에는 직접 CDP, 데몬, JSON, 안정적인 탭 별칭, 콘솔·네트워크 버퍼까지 구현한 Rust CLI도 있다.
 
@@ -82,26 +82,85 @@ Tracing](https://playwright.dev/agent-cli/commands/tracing)
 DevTools 탐색을 시작하기 전에, 로컬 Chrome에서 한 번 재현한 실패를
 작고 안전하며 provenance가 분명한 셸 산출물로 고정하는 일이다.
 
+### 해외 개발자 커뮤니티 언어와 반론
+
+이 절의 Reddit/Hacker News 글은 정량 수요 조사가 아니다. 일부는
+프로젝트 홍보글이고 표본과 투표 수도 작다. 따라서 시장 규모의 근거가
+아니라 개발자가 문제를 어떤 말로 설명하는지, 즉 언어와 반론을 찾는
+질적 신호로만 사용한다.
+
+**관찰:** r/webdev의 한 개발자는 사용자와 한 시간 동안 문제를 조사한
+뒤, 대부분의 해답이 Console과 Network에 있으므로 DevTools가 필요한
+정보를 export해 주길 바란다고 썼다. [r/webdev: Dev tools—exports](https://www.reddit.com/r/webdev/comments/11mzrn5/dev_tools_you_know_whatd_be_really_cool_exports/)
+댓글은 즉시 HAR export, Chrome Recorder, Sentry, 앱 자체 instrumentation을
+대안으로 제시했다. 따라서 단순한 “DevTools export”는 차별점이 아니며,
+Chroma는 network-only HAR나 production telemetry와 다른 범위를 설명해야
+한다.
+
+**관찰:** r/ClaudeAI와 r/cursor의 여러 댓글은 frontend/browser runtime
+정보를 에이전트에 전달할 때 console output과 screenshot을 직접 붙이는
+흐름을 묘사한다. 한 사용자는 이 과정을 줄이기 위해 browser MCP와 log
+pipe를 함께 쓴다고 했고, 다른 사용자는 Cursor가 브라우저를 직접
+제어하므로 별도 전달 과정이 없다고 반박했다. [r/ClaudeAI debugging
+thread](https://www.reddit.com/r/ClaudeAI/comments/1lxg1ks/this_is_the_way_to_use_claude_code_for_debugging/)
+· [r/cursor browser-context
+thread](https://www.reddit.com/r/cursor/comments/1vmm3yx/how_do_you_send_browser_context_to_cursorclaude/)
+
+**관찰:** r/SideProject에는 console error, 클릭 설명, 실패 request를
+에이전트에 반복 복사하던 문제에서 출발한 직접 경쟁 프로젝트 `peek`가
+공개됐다. 이 프로젝트는 Chrome extension, rrweb recording, local MCP,
+SQLite, Playwright repro 생성을 결합한다. 작성자는 cloud/account/telemetry
+없는 local-first와 origin permission 설계를 강조한다. [peek 소개
+글](https://www.reddit.com/r/SideProject/comments/1tvokj8/after_pasting_console_logs_into_my_ai_coding/)
+· [소스](https://github.com/Cubenest/rrweb-stack)
+
+**관찰:** r/ExperiencedDevs 토론은 log, trace, breakpoint, hypothesis,
+reproduction을 상황에 따라 조합하며 one-size-fits-all debugging solution은
+없다는 반응이 중심이다. 이는 Chroma가 root cause나 자동 수정을 약속하면
+신뢰를 잃는다는 반증이다. [r/ExperiencedDevs: How do YOU
+debug?](https://www.reddit.com/r/ExperiencedDevs/comments/1so7x49/how_do_you_debug/)
+
+**관찰:** Hacker News와 Reddit의 browser-MCP 토론에는 MCP가 context를
+많이 쓰거나 느리다는 불만, extension telemetry와 설치 복잡성에 대한
+경계, 반대로 live debugging에는 MCP가 매우 좋다는 평가가 함께 있다.
+[Ask HN: Playwright MCP
+Unusable?](https://news.ycombinator.com/item?id=45764043) · [Show HN:
+Browser MCP](https://news.ycombinator.com/item?id=43613194) · [r/AI_Coders
+browser-to-agent thread](https://www.reddit.com/r/AI_Coders/comments/1vn5c5a/whats_the_most_annoying_step_between_your_browser/)
+
+이 신호에서 다음 copy 원칙을 도출한다.
+
+1. “AI가 브라우저를 본다”를 내세우지 않는다. 이미 강한 MCP/CLI가 많다.
+2. 개발자가 Console, Network, screenshot을 옮기는 copy-paste layer가
+   되는 구체적인 순간을 첫 문장으로 쓴다.
+3. `no account / no cloud / no extension / no MCP server`와 JSON, Markdown,
+   PNG라는 ordinary-file 결과를 전면에 둔다.
+4. live agent가 같은 session에서 안정적으로 재현·검증할 수 있으면
+   Chroma가 필요 없다고 명시한다.
+5. Chroma는 원인을 자동 판정하거나 수정하지 않는다. 재현 증거를
+   보존하고 전달하는 narrow tool이다.
+6. HAR/NetLog, Sentry, Playwright, DevTools/MCP가 더 적합한 상황을 README에
+   먼저 인정하고, local reproduction artifact라는 좁은 자리를 남긴다.
+
 ### 검증된 job story와 공개 문구
 
 > 로컬 웹앱이 Chrome에서 깨졌을 때, Console과 Network를 다시 뒤지고
 > 상대에게 상황을 처음부터 설명하지 않도록, 한 번의 재현에서 나온
 > 증거를 그대로 보존하고 싶다.
 
-따라서 공개 headline은 **“Reproduce the web app bug once. Let whoever
-fixes it see the same browser evidence.”**로 정한다. 바로 아래 설명은 누가
-쓰는지와 무엇이 들어가는지를 구체화한다.
+따라서 공개 headline은 **“Stop being the copy-paste layer between Chrome
+and whoever fixes the bug.”**로 정한다. 바로 아래 설명은 무엇을 언제
+기록하고 어떤 형태로 남기는지 구체화한다.
 
-> Chroma records the Chrome tab while you reproduce a problem, then bundles
-> page state, console errors, failed requests, browser identity, and a
-> screenshot into one trustworthy report for you, your teammate, or your
-> coding agent.
+> Start Chroma, reproduce the web app bug once, and keep page state, console
+> errors, failed requests, browser identity, and a screenshot as ordinary
+> evidence files.
 
 경쟁 비교는 한 문장으로 유지한다.
 
-> Playwright automates browser flows. DevTools helps you investigate a live
-> browser. Chroma preserves one reproduction, so whoever fixes the bug does not
-> start from scratch.
+> Use Playwright to automate a known flow. Use DevTools or a browser MCP for
+> live investigation. Use Chroma when the evidence must outlive that session
+> and move between a human, shell, issue, or coding agent.
 
 ## 경쟁 지형
 
@@ -110,6 +169,7 @@ fixes it see the same browser evidence.”**로 정한다. 바로 아래 설명�
 | Chrome DevTools MCP + CLI | 공식 MCP 서버와 실험적 데몬형 CLI | URL/WS endpoint, Chrome 144+ auto-connect | snapshot, console, network, screenshot, trace, Lighthouse, heap | CLI의 raw JSON 지원 | MCP 도구를 1:1 CLI 하위 명령으로 생성 |
 | Playwright CLI | 코딩 에이전트용 상태 유지 CLI | CDP URL/channel, 확장 연결 | snapshot, action, console, requests, trace, recording/video | 파일/표준출력 중심; README에서 전역 JSON 계약은 확인 못함 | 범용 브라우저 자동화·테스트 CLI |
 | Playwright MCP | 접근성 트리 기반 MCP | CDP endpoint, 확장 연결 | action, console, network detail, trace 등 | MCP structured tool result | 풍부한 장기 에이전트 루프 |
+| peek / rrweb-stack | Chrome extension + local MCP | 사용자가 extension으로 활성화 | DOM/action history, console, failed request, Playwright repro | MCP + local SQLite | “agent가 브라우저를 읽음”, local-first recording 자체 |
 | Puppeteer 계열 | JavaScript 라이브러리 + 브라우저 관리/replay CLI | `puppeteer.connect()` | API로 거의 모든 자동화·CDP 접근 | 앱이 직접 설계해야 함 | 라이브러리 API를 얇게 CLI로 감싸기 |
 | chrome-remote-interface | 저수준 CDP 라이브러리 + REPL/target CLI | 기본 localhost:9222 및 endpoint | 임의 CDP 명령·이벤트 | 원시 객체/REPL | 범용 CDP 셸 또는 메서드 전달기 |
 | aeroxy/chrome-devtools-cli | Rust 직접-CDP CLI + 데몬 | Chrome/Edge 자동 발견, WS endpoint | snapshot, action, console/network drain, heap, emulation | JSON/TOON | “가벼움·직접 CDP·기존 Chrome·데몬” 자체 |

@@ -1,12 +1,15 @@
 # Chroma
 
-**Reproduce the web app bug once. Let whoever fixes it see the same browser evidence.**
+**Stop being the copy-paste layer between Chrome and whoever fixes the bug.**
 
-Chroma records the Chrome tab while you reproduce a problem, then bundles the
-page state, console errors, failed requests, browser identity, and screenshot
-into one trustworthy report for you, your teammate, or your coding agent. No
-automation script. No reopening DevTools to copy the same clues. No explaining
-the bug again from memory.
+Start Chroma, reproduce the web app bug once, and keep the page state, console
+errors, failed requests, browser identity, and screenshot as one reviewable
+report. You, a teammate, or a coding agent can inspect the same evidence without
+asking for another reproduction.
+
+No account. No cloud. No browser extension. No MCP server. Just a local CLI and
+ordinary JSON, Markdown, and PNG files you can inspect, attach, or feed to any
+tool.
 
 It is an open-source, shell-native CDP diagnostics CLI. Human output is compact;
 every command also supports a stable `--json` envelope.
@@ -38,20 +41,16 @@ With Chroma, start observation first, reproduce once, then run `chroma report`.
 The result keeps those clues in one bounded, redacted, provenance-bearing bundle
 that can be inspected from the shell or handed off as files.
 
-This job is broader than a Chroma-specific hunch: a 2025 survey of 3,500
-developers and managers names finding information and context switching among
-the largest developer time-wasters, while Stack Overflow's survey reporting says
-63% of respondents worry that AI tools lack crucial organizational context.
-Official browser guidance still asks reporters to supply a reproduction,
-environment facts, screenshots, and complete diagnostic logs. See the
-[problem validation and source limits](docs/research.md#개발자-문제-검증) behind
-the positioning.
+The positioning comes from developer-community discussions as well as formal
+research and browser-debugging guidance. The evidence, competing projects, and
+counterexamples are recorded in [problem validation and source
+limits](docs/research.md#개발자-문제-검증).
 
 ## Why another Chrome tool?
 
-> **Playwright automates browser flows. DevTools helps you investigate a live
-> browser. Chroma preserves one reproduction, so whoever fixes the bug does not
-> start from scratch.**
+> **Use Playwright to automate a known flow. Use DevTools or a browser MCP for
+> live investigation. Use Chroma when the evidence must outlive that session and
+> move between a human, shell, issue, or coding agent.**
 
 It is not the CDP transport, existing-browser attachment, accessibility refs, or JSON alone. Chrome DevTools MCP and Playwright CLI already cover much of that surface. Chroma is deliberately narrower:
 
@@ -62,12 +61,27 @@ It is not the CDP transport, existing-browser attachment, accessibility refs, or
 - Report timelines label nearby action/finding pairs as low-confidence temporal correlation; proximity is never presented as proof of cause.
 - `click`, `fill`, and `press` exist only to minimally reproduce a diagnosis; Chroma is not a general browser workflow framework.
 
+| What you actually need | Better fit |
+| --- | --- |
+| Production errors across real users | Sentry or your observability stack |
+| A network-only capture | Chrome HAR or NetLog export |
+| A repeatable automated browser test | Playwright |
+| Open-ended, live browser investigation | DevTools or a browser MCP |
+| A small local reproduction that must survive and travel | **Chroma** |
+
+A Chroma report is not a HAR replacement or a lossless trace. It deliberately
+combines a failure-focused network view with console/runtime errors, page
+snapshot, browser identity, screenshot, and evidence-health metadata. Sensitive
+headers, cookies, and request/response bodies are excluded by default.
+
 See the [competitive research](docs/research.md) and [product/CLI decision record](docs/decisions/0001-product-and-cli.md) for the evidence and tradeoffs behind this wedge.
 
-Use Chroma to diagnose and hand off a local-Chrome failure. Use Playwright for
-test suites and cross-browser automation, Chrome DevTools MCP for deep
-performance/heap/Lighthouse work, and raw-CDP tools for arbitrary protocol
-commands.
+If one agent already controls Chrome, can reproduce the bug reliably, and can
+verify its fix in the same session, Chroma may add no value. Use Playwright for
+test suites and cross-browser automation, Chrome DevTools MCP for deep live
+investigation, and raw-CDP tools for arbitrary protocol commands. Use Chroma
+when the reproduction must become a bounded artifact that survives the session
+and can be reviewed without granting someone live browser control.
 
 ## How it fits together
 

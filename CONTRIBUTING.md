@@ -2,9 +2,9 @@
 
 Thanks for helping make local web diagnosis faster and more trustworthy.
 
-Chroma's promise is simple: reproduce the web app bug once, then let whoever
-fixes it see the same browser evidence. It records one Chrome reproduction as a
-trustworthy report for the developer, their teammate, or their coding agent.
+Chroma's promise is simple: stop making developers the copy-paste layer between
+Chrome and whoever fixes the bug. It preserves one Chrome reproduction as
+ordinary evidence files that can move between a person, shell, issue, or agent.
 
 ## Start with the product boundary
 

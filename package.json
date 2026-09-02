@@ -1,7 +1,7 @@
 {
   "name": "chroma-cdp",
   "version": "0.1.0",
-  "description": "Reproduce a web app bug once; preserve the Chrome evidence for whoever fixes it",
+  "description": "Stop copy-pasting Chrome clues; preserve one reproduction as plain evidence files",
   "type": "module",
   "bin": {
     "chroma": "./bin/chroma.js"

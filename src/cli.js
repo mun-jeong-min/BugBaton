@@ -16,10 +16,10 @@ import { codedError, errorPayload, safeSingleLine } from "./errors.js";
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
 
-const HELP = `chroma — reproduce the web app bug once; preserve the browser evidence
+const HELP = `chroma — stop being the copy-paste layer between Chrome and whoever fixes the bug
 
-Record one Chrome reproduction as a trustworthy report for you, your teammate,
-or your coding agent—without writing an automation script.
+Preserve one Chrome reproduction as ordinary JSON, Markdown, and PNG evidence.
+No account, cloud, browser extension, or MCP server.
 
 Usage:
   chroma <command> [options]

@@ -31,9 +31,9 @@ stable structured output, explicit failure classes, and no terminal-only behavio
 
 ## Decision
 
-The public product promise is: **Reproduce the web app bug once. Let whoever
-fixes it see the same browser evidence.** Chroma records one Chrome reproduction
-as a trustworthy report for the developer, their teammate, or their coding agent.
+The public product promise is: **Stop being the copy-paste layer between Chrome
+and whoever fixes the bug.** Chroma preserves one Chrome reproduction as
+ordinary evidence files that can move between a person, shell, issue, or agent.
 
 Chroma will be an opinionated, read-mostly incident-triage CLI for local web apps.
 Its public executable is `chroma`. It will expose a small set of task-level verbs,
