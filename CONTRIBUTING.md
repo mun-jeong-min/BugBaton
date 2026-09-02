@@ -2,8 +2,9 @@
 
 Thanks for helping make local web diagnosis faster and more trustworthy.
 
-Chroma turns a broken web app in Chrome into a trustworthy, shareable bug report
-without requiring a browser automation script.
+Chroma's promise is simple: reproduce the web app bug once, then let whoever
+fixes it see the same browser evidence. It records one Chrome reproduction as a
+trustworthy report for the developer, their teammate, or their coding agent.
 
 ## Start with the product boundary
 

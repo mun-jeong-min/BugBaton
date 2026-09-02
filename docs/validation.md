@@ -78,7 +78,7 @@ concurrent run found no Chrome/Chromium/Chroma CDP listener.
 ### Package/install smoke
 
 Final `npm pack --dry-run --json` succeeded with 21 package entries, an
-approximately 63 KiB tarball, and approximately 188 KiB of unpacked content.
+approximately 65 KiB tarball, and approximately 194 KiB of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 

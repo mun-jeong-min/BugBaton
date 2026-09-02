@@ -16,7 +16,10 @@ import { codedError, errorPayload, safeSingleLine } from "./errors.js";
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
 
-const HELP = `chroma — turn a broken web app in Chrome into a trustworthy bug report
+const HELP = `chroma — reproduce the web app bug once; preserve the browser evidence
+
+Record one Chrome reproduction as a trustworthy report for you, your teammate,
+or your coding agent—without writing an automation script.
 
 Usage:
   chroma <command> [options]

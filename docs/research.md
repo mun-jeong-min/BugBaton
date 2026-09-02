@@ -15,12 +15,13 @@
 
 **추론/제안 — 포지셔닝:**
 
-> 자동화 스크립트를 작성하지 않고도 Chrome에서 깨진 웹앱을 신뢰할 수
-> 있고 공유 가능한 버그 리포트로 바꾸는 진단 CLI.
+> 웹앱 버그는 한 번만 재현하고, 문제를 고칠 모든 사람이 같은 브라우저
+> 증거를 보게 한다.
 
-Playwright가 브라우저 workflow를 자동화하고 DevTools 도구가 브라우저를
-깊게 탐색한다면, Chroma는 실제 Chrome 탭에서 발생한 실패를 포착해
-provenance가 확인되는 인계용 증거로 패키징한다.
+Playwright가 flow를 자동화하고 DevTools가 브라우저를 조사한다면,
+Chroma는 한 번의 실제 Chrome 재현을 보존해 다음 개발자나 코딩
+에이전트가 처음부터 다시 시작하지 않게 한다. 공개 문구는 기능명보다
+개발자가 겪는 반복을 먼저 말해야 한다.
 
 단순히 “MCP보다 가벼운 CDP CLI”, “기존 Chrome에 연결”, “접근성 스냅샷으로 클릭”, “JSON 출력”을 내세워서는 차별화되지 않는다. 공식 Chrome DevTools MCP에도 실험적 CLI가 있고, Playwright CLI도 기존 Chrome 연결과 콘솔·네트워크 관찰을 제공한다. 커뮤니티에는 직접 CDP, 데몬, JSON, 안정적인 탭 별칭, 콘솔·네트워크 버퍼까지 구현한 Rust CLI도 있다.
 
@@ -32,6 +33,75 @@ provenance가 확인되는 인계용 증거로 패키징한다.
 4. `report`: page/snapshot/screenshot/console exception/failed request/환경 정보를 동일한 관찰 창에서 모으고, 기본 비밀정보 제거와 provenance를 포함한 공유 가능한 증거 패킷을 만든다.
 
 `click`, `fill`, `press`, `snapshot`, `screenshot`은 필요한 MVP이지만 시장 차별점이 아니라 진단을 재현하기 위한 보조 기능으로 다루는 편이 맞다.
+
+## 개발자 문제 검증
+
+### 확인된 공통 마찰
+
+**사실:** Atlassian의 2025년 조사에는 6개국 개발자와 관리자 3,500명이
+참여했다. 응답한 개발자의 90%가 비코딩 업무의 비효율로 주당 6시간
+이상을 잃는다고 답했고, 상위 시간 낭비 요인에는 정보 찾기와 도구 간
+context switching이 포함됐다. [Atlassian Developer Experience Report
+2025](https://www.atlassian.com/blog/developer/developer-experience-report-2025)
+
+**해석 한계:** 이 조사는 브라우저 디버깅이나 Chroma 수요를 직접
+측정하지 않았다. 다만 여러 도구에서 단서를 찾아 옮기는 흐름을 줄이는
+것이 넓은 developer-experience 문제와 맞닿아 있음을 뒷받침한다.
+
+**사실:** Stack Overflow가 65,000명 이상의 2024 Developer Survey
+응답을 분석한 글에서, 조직 내 AI 사용의 우려로 66%가 출력 불신을,
+63%가 코드베이스·아키텍처·조직 지식에 필요한 맥락 부족을 꼽았다.
+60% 이상은 답을 찾는 데 하루 30분 이상을 쓴다고 답했다. [Stack
+Overflow 2024 AI coding-tool
+analysis](https://stackoverflow.blog/2024/09/23/where-developers-feel-ai-coding-tools-are-working-and-where-they-re-missing-the-mark/)
+
+**함의:** “agent-friendly JSON”만으로는 부족하다. 에이전트가 본 오류가
+어느 브라우저·탭·관찰 창에서 나왔는지, 무엇이 누락됐는지 함께 전달해야
+신뢰 가능한 맥락이 된다.
+
+**사실:** MDN의 브라우저 버그 제출 지침은 문제를 다른 사람과 논의하려면
+최소 재현 케이스가 필요하다고 설명하며, 보고서에 브라우저 버전,
+expected/actual 결과, screenshot 등을 포함하라고 한다. [MDN: When and
+how to file bugs with
+browsers](https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/File_browser_bugs)
+
+**사실:** Chromium의 네트워크 문제 수집 절차는 기록 시작, 다른 탭에서
+문제 재현, 기록 중지, 조사자에게 전체 로그 전달이라는 흐름이다. 일부
+snippet만으로는 진단하기 어렵고 URL이나 초점 정보도 함께 제공하라고
+명시한다. 동시에 로그의 개인정보 위험도 경고한다. [Chromium: How to
+capture a NetLog
+dump](https://www.chromium.org/for-testers/providing-network-details/)
+
+**사실:** Playwright CLI의 공식 tracing 문서도 실패 디버깅을 위해 DOM
+snapshot, screenshot, network, console, timing을 함께 기록하고 trace를
+팀과 공유하는 흐름을 제시한다. [Playwright CLI:
+Tracing](https://playwright.dev/agent-cli/commands/tracing)
+
+**함의:** 필요한 증거의 종류는 이미 업계에서 반복 검증됐다. Chroma가
+새로 주장할 지점은 그 증거 목록 자체가 아니다. 테스트나 광범위한
+DevTools 탐색을 시작하기 전에, 로컬 Chrome에서 한 번 재현한 실패를
+작고 안전하며 provenance가 분명한 셸 산출물로 고정하는 일이다.
+
+### 검증된 job story와 공개 문구
+
+> 로컬 웹앱이 Chrome에서 깨졌을 때, Console과 Network를 다시 뒤지고
+> 상대에게 상황을 처음부터 설명하지 않도록, 한 번의 재현에서 나온
+> 증거를 그대로 보존하고 싶다.
+
+따라서 공개 headline은 **“Reproduce the web app bug once. Let whoever
+fixes it see the same browser evidence.”**로 정한다. 바로 아래 설명은 누가
+쓰는지와 무엇이 들어가는지를 구체화한다.
+
+> Chroma records the Chrome tab while you reproduce a problem, then bundles
+> page state, console errors, failed requests, browser identity, and a
+> screenshot into one trustworthy report for you, your teammate, or your
+> coding agent.
+
+경쟁 비교는 한 문장으로 유지한다.
+
+> Playwright automates browser flows. DevTools helps you investigate a live
+> browser. Chroma preserves one reproduction, so whoever fixes the bug does not
+> start from scratch.
 
 ## 경쟁 지형
 

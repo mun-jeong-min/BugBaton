@@ -1,12 +1,15 @@
 # Chroma
 
-**Turn a broken web app in Chrome into a trustworthy, shareable bug report—without writing a browser automation script.**
+**Reproduce the web app bug once. Let whoever fixes it see the same browser evidence.**
 
-Chroma is an open-source, shell-native CDP diagnostics CLI. It connects directly
-to a local Chrome, keeps a small observation monitor alive between commands,
-normalizes JavaScript errors and failed requests, and produces a reviewable
-evidence bundle. Human output is compact; every command also supports a stable
-`--json` envelope.
+Chroma records the Chrome tab while you reproduce a problem, then bundles the
+page state, console errors, failed requests, browser identity, and screenshot
+into one trustworthy report for you, your teammate, or your coding agent. No
+automation script. No reopening DevTools to copy the same clues. No explaining
+the bug again from memory.
+
+It is an open-source, shell-native CDP diagnostics CLI. Human output is compact;
+every command also supports a stable `--json` envelope.
 
 > **Pre-release 0.1.0:** the real-Chrome workflow is verified on macOS. Linux
 > and Windows E2E remain open, and no npm release has been published.
@@ -24,11 +27,31 @@ Wrote report to ./chroma-report-2026-09-02T06-33-40-101Z-1234
 2 errors, 2 failed requests, 17 snapshot nodes
 ```
 
+## The debugging loop Chroma removes
+
+A local page breaks. You reproduce it, search Console, find the red request in
+Network, copy a stack and status code, take a screenshot, note the browser
+version, and paste the pieces into an issue or an AI chat. If one clue is missing
+or came from a different run, the next person asks you to reproduce it again.
+
+With Chroma, start observation first, reproduce once, then run `chroma report`.
+The result keeps those clues in one bounded, redacted, provenance-bearing bundle
+that can be inspected from the shell or handed off as files.
+
+This job is broader than a Chroma-specific hunch: a 2025 survey of 3,500
+developers and managers names finding information and context switching among
+the largest developer time-wasters, while Stack Overflow's survey reporting says
+63% of respondents worry that AI tools lack crucial organizational context.
+Official browser guidance still asks reporters to supply a reproduction,
+environment facts, screenshots, and complete diagnostic logs. See the
+[problem validation and source limits](docs/research.md#개발자-문제-검증) behind
+the positioning.
+
 ## Why another Chrome tool?
 
-> **The short answer:** Playwright automates browser workflows and DevTools tools
-> help you explore a browser; Chroma captures the failure happening in a real
-> Chrome tab and packages trustworthy evidence for handoff.
+> **Playwright automates browser flows. DevTools helps you investigate a live
+> browser. Chroma preserves one reproduction, so whoever fixes the bug does not
+> start from scratch.**
 
 It is not the CDP transport, existing-browser attachment, accessibility refs, or JSON alone. Chrome DevTools MCP and Playwright CLI already cover much of that surface. Chroma is deliberately narrower:
 
