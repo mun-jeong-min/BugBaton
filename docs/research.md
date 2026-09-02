@@ -443,6 +443,9 @@ chroma demo
 
 The report example should connect an API failure, its nearby user action, a
 simultaneous uncaught exception, and a screenshot without overstating causality.
+An optional bug claim now puts the developer's title, expected result, and actual
+result before that evidence so a recipient can scan the packet without guessing
+what behavior was under review.
 The choice guide should be honest:
 
 - use Playwright for test suites and cross-browser automation;

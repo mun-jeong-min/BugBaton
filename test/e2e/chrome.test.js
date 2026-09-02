@@ -828,7 +828,7 @@ test("capture records manual actions, writes evidence, and stops its session", {
   let monitorPid;
 
   try {
-    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir];
+    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir, "--title", "HTTP request fails", "--expected", "The request succeeds.", "--actual", "The endpoint returns HTTP 503."];
     if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
     const capturePromise = runProcess(process.execPath, args, { timeout: 35_000 });
     const session = await poll(
@@ -872,6 +872,8 @@ test("capture records manual actions, writes evidence, and stops its session", {
 
     const report = JSON.parse(await readFile(join(reportDir, "report.json"), "utf8"));
     const receipt = JSON.parse(await readFile(join(reportDir, "capture-receipt.json"), "utf8"));
+    assert.deepEqual(report.claim, { title: "HTTP request fails", expected: "The request succeeds.", actual: "The endpoint returns HTTP 503." });
+    assert.match(await readFile(join(reportDir, "README.md"), "utf8"), /## Bug claim[\s\S]*HTTP request fails[\s\S]*Expected:[\s\S]*Actual:/);
     assert.equal(report.observation.coverage, "best-effort");
     assert.deepEqual(receipt.sessionShutdown, { complete: true, monitorStopped: true, browserOwned: true, browserClosed: true });
     assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "click" && action.target?.ordinal));

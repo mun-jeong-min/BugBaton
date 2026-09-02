@@ -62,6 +62,15 @@ test("stop is idempotent and does not materialize state", async () => {
   assert.equal((await readdir(root)).includes("state-that-does-not-exist"), false);
 });
 
+test("capture rejects an oversized bug claim before creating session state", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "chroma-claim-test-"));
+  const state = path.join(root, "state-that-does-not-exist");
+  const result = await run(["capture", "--title", "x".repeat(161), "--state-dir", state, "--json"]);
+  assert.equal(result.code, 2);
+  assert.equal(JSON.parse(result.stdout).error.code, "USAGE_ERROR");
+  assert.equal((await readdir(root)).includes("state-that-does-not-exist"), false);
+});
+
 test("doctor diagnoses corrupt state without mutating or crashing", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "chroma-doctor-corrupt-"));
   const state = path.join(root, "state");

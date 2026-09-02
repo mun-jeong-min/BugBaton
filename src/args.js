@@ -10,9 +10,9 @@ const GLOBAL = {
 
 export const COMMAND_OPTIONS = {
   doctor: { "--chrome": "value" },
-  demo: { "--chrome": "value", "--port": "value", "--profile": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean" },
+  demo: { "--chrome": "value", "--port": "value", "--profile": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean", "--title": "value", "--expected": "value", "--actual": "value" },
   launch: { "--chrome": "value", "--port": "value", "--profile": "value", "--url": "value", "--headless": "boolean", "--deterministic": "boolean" },
-  capture: { "--chrome": "value", "--port": "value", "--profile": "value", "--url": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean" },
+  capture: { "--chrome": "value", "--port": "value", "--profile": "value", "--url": "value", "--headless": "boolean", "--deterministic": "boolean", "--output": "value", "--duration": "value", "--no-screenshot": "boolean", "--title": "value", "--expected": "value", "--actual": "value" },
   connect: {},
   stop: {},
   tabs: {},
@@ -23,7 +23,7 @@ export const COMMAND_OPTIONS = {
   errors: { "--tab": "value", "--clear": "boolean", "--limit": "value", "--since": "value" },
   network: { "--tab": "value", "--failed": "boolean", "--clear": "boolean", "--limit": "value", "--since": "value" },
   screenshot: { "--tab": "value", "--output": "value", "--full-page": "boolean" },
-  report: { "--tab": "value", "--output": "value", "--no-screenshot": "boolean" },
+  report: { "--tab": "value", "--output": "value", "--no-screenshot": "boolean", "--title": "value", "--expected": "value", "--actual": "value" },
   version: {},
 };
 

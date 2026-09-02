@@ -5,6 +5,13 @@
 - Complete since navigation: **no**
 - Generated: 2026-09-02T12:59:56.058Z
 
+## Bug claim
+
+**The request fails after one click**
+
+- Expected: The request completes successfully.
+- Actual: The endpoint returns HTTP 503 and the page logs an error.
+
 Page: **Chroma CDP fixture**
 
 URL: `http://127.0.0.1:4173/`

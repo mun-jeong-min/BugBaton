@@ -26,6 +26,11 @@
     "title": "Chroma CDP fixture",
     "url": "http://127.0.0.1:4173/"
   },
+  "claim": {
+    "title": "The request fails after one click",
+    "expected": "The request completes successfully.",
+    "actual": "The endpoint returns HTTP 503 and the page logs an error."
+  },
   "observation": {
     "startedAt": "2026-09-02T12:57:56.046Z",
     "monitorStartedAt": "2026-09-02T12:57:55.491Z",

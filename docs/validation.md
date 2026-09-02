@@ -26,7 +26,7 @@ All CLI invocations in the E2E lane ran as separate processes and returned one s
 ```console
 $ npm run check
 eslint bin src test
-tests 46; pass 46; fail 0
+tests 47; pass 47; fail 0
 ```
 
 The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, the packaged demo server, committed-sample integrity, and a repository-wide guard against CJK writing in owned text and paths.
@@ -77,6 +77,8 @@ End-to-end assertions include:
   inheriting an incorrect milliseconds conversion.
 - automatic capture port selection and a post-report receipt proving monitor and
   owned-browser shutdown.
+- bounded title/expected/actual claim fields rendered above the evidence timeline,
+  with oversize claims rejected before session state is created.
 
 The same diagnostic implementation also passed two instances concurrently
 (workflow times 13327.176ms and 13024.821ms) before the positioning-only

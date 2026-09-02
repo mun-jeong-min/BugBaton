@@ -152,6 +152,7 @@ before returning.
 
 ```text
 chroma demo [--output <directory>] [--duration <seconds>]
+            [--title <text>] [--expected <text>] [--actual <text>]
             [--chrome <path>] [--port <number>] [--profile <path>]
             [--headless] [--deterministic]
 ```
@@ -166,6 +167,7 @@ account, clone, or external service. Its report contract is identical to
 
 ```text
 chroma capture [--url <url>] [--output <directory>] [--duration <seconds>]
+               [--title <text>] [--expected <text>] [--actual <text>]
                [--chrome <path>] [--port <number>] [--profile <path>]
                [--headless] [--deterministic]
 ```
@@ -382,11 +384,13 @@ was requested. It warns that screenshots can contain sensitive page content.
 
 ```text
 chroma report [--output <directory>] [--no-screenshot] [--tab <match>]
+              [--title <text>] [--expected <text>] [--actual <text>]
 ```
 
 Produces one bounded diagnostic evidence packet for the selected page. It contains:
 
 - Chroma, Chrome, platform, connection mode, and relevant launch facts;
+- an optional bounded bug claim stating title, expected result, and actual result;
 - target ID, title, sanitized URL, and observation window;
 - a snapshot or an explicit reason it could not be captured;
 - the same normalized records returned by `errors` and `network --failed`;
@@ -397,6 +401,11 @@ Produces one bounded diagnostic evidence packet for the selected page. It contai
 `report.json`, a concise `README.md`, and, by default, `screenshot.png`. Without
 `--output`, Chroma chooses a collision-safe timestamped directory. Stdout contains
 only the artifact path and summary, or the standard envelope in JSON mode.
+
+Claim fields are explicit user-authored report content, capped before any browser
+is launched, sanitized for terminal/Markdown control characters, and persisted
+in both JSON and Markdown. They are not inferred from temporal evidence and are
+never presented as Chroma's diagnosis.
 
 `report.json` is the bundle manifest as well as its structured evidence. It records
 schema, Chroma/Chrome/protocol identity, target identity, observation cursor/window,
