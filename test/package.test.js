@@ -17,8 +17,10 @@ test("package surface and README stay aligned with the public CLI", async () => 
   assert.equal(packageJson.dependencies, undefined, "the MVP must remain zero-runtime-dependency");
   assert.ok(packageJson.files.includes("CONTRIBUTING.md"));
   assert.ok(packageJson.files.includes("SECURITY.md"));
-  assert.ok((binStat.mode & 0o111) !== 0, "the packaged bin must be executable");
-  await access(bin, constants.X_OK);
+  if (process.platform !== "win32") {
+    assert.ok((binStat.mode & 0o111) !== 0, "the packaged bin must be executable on POSIX platforms");
+    await access(bin, constants.X_OK);
+  }
 
   for (const command of Object.keys(COMMAND_OPTIONS)) {
     assert.ok(readme.includes(`| \`${command}`), `README command table should include ${command}`);
