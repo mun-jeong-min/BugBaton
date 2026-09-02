@@ -1,0 +1,36 @@
+{
+  "name": "chroma-cdp",
+  "version": "0.1.0",
+  "description": "Turn a broken web app in Chrome into a trustworthy, shareable bug report",
+  "type": "module",
+  "bin": {
+    "chroma": "./bin/chroma.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "README.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "npm run lint && node --check bin/chroma.js && node --check src/cli.js && node --check src/monitor.js && npm test",
+    "test": "node --test test/*.test.js test/fixtures/*.test.mjs",
+    "test:e2e": "CHROMA_E2E=1 node --test test/e2e/*.test.js",
+    "lint": "eslint bin src test"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mun-jeong-min/Chroma.git"
+  },
+  "homepage": "https://github.com/mun-jeong-min/Chroma#readme",
+  "bugs": "https://github.com/mun-jeong-min/Chroma/issues",
+  "devDependencies": {
+    "eslint": "^10.9.1"
+  }
+}

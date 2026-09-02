@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chroma CDP fixture</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Local-only test surface</p>
+      <h1>Chroma CDP fixture</h1>
+      <p id="status" role="status" aria-live="polite" data-state="ready">Ready</p>
+
+      <section aria-labelledby="interaction-heading">
+        <h2 id="interaction-heading">Interaction</h2>
+        <button id="click-target" type="button">Increment counter</button>
+        <button id="cover-click-target" type="button">Cover increment button</button>
+        <output id="click-count" for="click-target">0</output>
+
+        <form id="message-form">
+          <label for="message">Message</label>
+          <input id="message" name="message" autocomplete="off" placeholder="Type and press Enter" />
+          <button type="submit">Submit</button>
+        </form>
+        <p id="submitted-message" hidden></p>
+      </section>
+
+      <section aria-labelledby="diagnostics-heading">
+        <h2 id="diagnostics-heading">Diagnostics</h2>
+        <div class="button-row">
+          <button id="request-ok" type="button">Request 200</button>
+          <button id="request-http-error" type="button">Request 503</button>
+          <button id="request-network-failure" type="button">Drop connection</button>
+          <button id="console-error" type="button">Log console error</button>
+          <button id="runtime-error" type="button">Throw runtime error</button>
+          <button id="reload-page" type="button">Reload same URL</button>
+          <button id="flood-errors" type="button">Flood event log</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="snapshot-heading">
+        <h2 id="snapshot-heading">Snapshot landmarks</h2>
+        <nav aria-label="Fixture links">
+          <a href="#details">Skip to details</a>
+        </nav>
+        <article id="details">
+          <h3>Stable content</h3>
+          <p data-testid="snapshot-copy">A deterministic local page for DOM and accessibility snapshots.</p>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
