@@ -34,7 +34,7 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#1547fbb -- chroma demo
+npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- chroma demo
 ```
 
 Follow the three steps in the Chrome window, then press Enter. Chroma captures
@@ -61,9 +61,15 @@ scripts and coding agents. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#1547fbb -- \
-  chroma capture --url http://127.0.0.1:3000
+npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- \
+  chroma capture --url http://127.0.0.1:3000 \
+  --title "Checkout fails after Save" \
+  --expected "The order is saved." \
+  --actual "The request returns HTTP 503."
 ```
+
+The optional claim appears above the evidence timeline, so a recipient sees what
+was expected, what happened, and then the browser evidence supporting it.
 
 > **Pre-release 0.1.0:** install directly from GitHub for now. The full local
 > lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
@@ -135,7 +141,7 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/Chroma#1547fbb
+npm install --global github:mun-jeong-min/Chroma#559cb4f
 chroma --version
 ```
 
@@ -311,6 +317,7 @@ CDP is browser-level control. Anyone who can reach the endpoint may read page co
 - URL credentials, sensitive query values, Bearer/Basic credentials, and common token assignments are redacted before monitor persistence.
 - Request/response bodies, cookies, authorization headers, storage values, and `fill` text are not collected by default.
 - Manual action capture stores element category, control keys, and input length, never input text.
+- `--title`, `--expected`, and `--actual` are intentional report content; review them before sharing.
 - Screenshots, page titles, accessible names, and console prose can still contain sensitive information. Review every report before sharing.
 - Chroma does not upload reports, expose tunnels, send telemetry, bypass TLS warnings, or publish anything.
 
