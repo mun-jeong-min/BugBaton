@@ -58,7 +58,7 @@ Run "chroma <command> --help" for command-specific usage.`;
 
 const COMMAND_HELP = {
   doctor: "Usage: chroma doctor [--chrome PATH] [--json]\nRead-only checks for Node, Chrome, saved session, monitor, and endpoint.",
-  capture: "Usage: chroma capture [--url URL] [--output DIR] [--duration SECONDS] [--headless] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
+  capture: "Usage: chroma capture [--url URL] [--output DIR] [--duration SECONDS] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. A free loopback CDP port and unique report directory are selected by default. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
   launch: "Usage: chroma launch [--chrome PATH] [--port 9222] [--profile PATH] [--url URL] [--headless] [--deterministic] [--json]",
   connect: "Usage: chroma connect [ENDPOINT] [--allow-remote] [--json]\nDefault endpoint: http://127.0.0.1:9222",
   stop: "Usage: chroma stop [--json]\nStop the observation monitor and close Chrome only when Chroma launched and can verify it.",
@@ -325,7 +325,7 @@ async function commandLaunch(parsed, paths, { captureActions = false } = {}) {
   const launched = launchChrome(binary, { port, profile, url: parsed.options.url, headless: parsed.options.headless, deterministic: parsed.options.deterministic });
   let version;
   try {
-    version = await waitForChrome(endpoint);
+    version = await waitForChrome(endpoint, 20_000);
   } catch (error) {
     try { process.kill(launched.pid, "SIGTERM"); } catch {}
     throw codedError("CDP_STARTUP_FAILED", `Chrome did not expose CDP at ${endpoint}`, {
@@ -700,7 +700,7 @@ async function commandReport(parsed, paths, endpoint) {
     const timeline = buildTimeline(actions, errors, network);
     const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor });
     await writeFile(path.join(stagingDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`, { flag: "wx", mode: 0o600 });
-    const markdown = `# Chroma diagnostic report\n\nBundle status: **${report.status}**  \nObservation coverage: **best effort**  \nComplete since navigation: **no**  \nGenerated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**  \nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
+    const markdown = `# Chroma diagnostic report\n\n- Bundle status: **${report.status}**\n- Observation coverage: **best effort**\n- Complete since navigation: **no**\n- Generated: ${report.generatedAt}\n\nPage: **${markdownInline(tab.title || "(untitled)")}**\n\nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
     await writeFile(path.join(stagingDir, "README.md"), markdown, { flag: "wx", mode: 0o600 });
     await rename(stagingDir, outputDir);
     return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary: { errors: errors.length, failedNetwork: network.length, actions: actions.length, snapshotNodes: snapshot.nodes.length } };

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "status": "complete",
-  "generatedAt": "2026-09-02T12:18:54.402Z",
-  "completedAt": "2026-09-02T12:18:54.468Z",
+  "generatedAt": "2026-09-02T12:59:56.058Z",
+  "completedAt": "2026-09-02T12:59:56.155Z",
   "producer": {
     "name": "chroma",
     "version": "0.1.0",
@@ -14,31 +14,32 @@
     "protocolVersion": "1.3"
   },
   "connection": {
-    "sessionId": "e5d091c1-6107-4088-a4c9-8c9a7eca84bd",
-    "endpoint": "http://127.0.0.1:9333",
+    "sessionId": "0b5adf3d-419d-42da-ad0f-1abe299376a1",
+    "endpoint": "http://127.0.0.1:59681",
     "mode": "launch",
-    "launchedChromePid": 69008,
-    "isolatedProfile": true,
+    "launchedChromePid": 6808,
+    "isolatedProfile": false,
     "deterministicLaunch": true
   },
   "tab": {
-    "id": "660A34FA59A5D169ED5DB2799D7A72DF",
+    "id": "F6BCBE32985D4B2AE56C22E20DB07A4B",
     "title": "Chroma CDP fixture",
     "url": "http://127.0.0.1:4173/"
   },
   "observation": {
-    "startedAt": "2026-09-02T12:17:21.590Z",
-    "monitorStartedAt": "2026-09-02T12:17:20.541Z",
+    "startedAt": "2026-09-02T12:57:56.046Z",
+    "monitorStartedAt": "2026-09-02T12:57:55.491Z",
     "boundary": {
-      "id": "16877668cf84c36a7ecd",
-      "capturedAt": "2026-09-02T12:18:54.407Z",
-      "bytes": 2788,
+      "id": "8145bc941cbec91009a0",
+      "capturedAt": "2026-09-02T12:59:56.065Z",
+      "bytes": 2786,
       "records": 10,
       "corruptLines": 0,
       "readError": null,
-      "lastObservedAt": "2026-09-02T12:18:44.658Z"
+      "lastObservedAt": "2026-09-02T12:58:15.317Z"
     },
     "monitorRunning": true,
+    "coverage": "best-effort",
     "bestEffort": true,
     "completeSinceNavigation": false,
     "discontinuities": []
@@ -56,35 +57,35 @@
     "snapshot": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:18:54.422Z"
+      "capturedAt": "2026-09-02T12:59:56.090Z"
     },
     "errors": {
       "status": "collected",
       "reason": null,
-      "boundaryId": "16877668cf84c36a7ecd"
+      "boundaryId": "8145bc941cbec91009a0"
     },
     "failedNetwork": {
       "status": "collected",
       "reason": null,
-      "boundaryId": "16877668cf84c36a7ecd"
+      "boundaryId": "8145bc941cbec91009a0"
     },
     "actionOutcomes": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:18:54.426Z",
-      "boundaryId": "16877668cf84c36a7ecd"
+      "capturedAt": "2026-09-02T12:59:56.093Z",
+      "boundaryId": "8145bc941cbec91009a0"
     },
     "screenshot": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:18:54.468Z"
+      "capturedAt": "2026-09-02T12:59:56.154Z"
     }
   },
   "snapshot": {
-    "capturedAt": "2026-09-02T12:18:54.422Z",
-    "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+    "capturedAt": "2026-09-02T12:59:56.090Z",
+    "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
     "url": "http://127.0.0.1:4173/",
-    "loaderId": "0CBF4E453464D2C9919BE3BD1D43B5DB",
+    "loaderId": "9273727C3B21DD2A3814FF2477F0533C",
     "title": "Chroma CDP fixture",
     "nodes": [
       {
@@ -220,56 +221,56 @@
     {
       "kind": "error",
       "source": "network",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/api/http-error",
-      "sourceTimestamp": "2026-09-02T12:18:43.152Z",
+      "sourceTimestamp": "2026-09-02T12:58:13.703Z",
       "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "observedAt": "2026-09-02T12:18:43.153Z"
+      "observedAt": "2026-09-02T12:58:13.704Z"
     },
     {
       "kind": "error",
       "source": "console",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788351523153.215,
+      "cdpMonotonicSeconds": 1788353893704.296,
       "message": "fixture:request-failed Error: HTTP 503 Service Unavailable\n    at request (http://127.0.0.1:4173/app.js:51:13)",
-      "observedAt": "2026-09-02T12:18:43.154Z"
+      "observedAt": "2026-09-02T12:58:13.706Z"
     },
     {
       "kind": "error",
       "source": "console",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788351523649.345,
+      "cdpMonotonicSeconds": 1788353894203.789,
       "message": "fixture:deliberate-console-error Object",
-      "observedAt": "2026-09-02T12:18:43.650Z"
+      "observedAt": "2026-09-02T12:58:14.204Z"
     }
   ],
   "failedNetwork": [
     {
       "kind": "network-http-error",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
-      "requestId": "69025.6",
-      "cdpMonotonicSeconds": 1690506.438411,
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
+      "requestId": "6820.6",
+      "cdpMonotonicSeconds": 1692876.981017,
       "url": "http://127.0.0.1:4173/api/http-error",
       "method": "GET",
-      "durationToHeadersMs": 6,
+      "durationToHeadersMs": 3,
       "initiatorType": "script",
       "initiatorUrl": "http://127.0.0.1:4173/app.js",
       "initiatorLine": 48,
       "status": 503,
       "statusText": "Service Unavailable",
       "resourceType": "Fetch",
-      "observedAt": "2026-09-02T12:18:43.153Z"
+      "observedAt": "2026-09-02T12:58:13.704Z"
     }
   ],
   "actionOutcomes": [
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/",
-      "actionId": "860c01a6dd076350",
+      "actionId": "551bc0539e45419f",
       "action": "click",
       "target": {
         "tag": "button",
@@ -277,14 +278,14 @@
         "type": "button",
         "ordinal": 7
       },
-      "observedAt": "2026-09-02T12:18:43.146Z"
+      "observedAt": "2026-09-02T12:58:13.700Z"
     },
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/",
-      "actionId": "fd8f2dc7606594e1",
+      "actionId": "2c7ac6126be01ee9",
       "action": "click",
       "target": {
         "tag": "button",
@@ -292,14 +293,14 @@
         "type": "button",
         "ordinal": 9
       },
-      "observedAt": "2026-09-02T12:18:43.649Z"
+      "observedAt": "2026-09-02T12:58:14.204Z"
     },
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/",
-      "actionId": "3053c25b0dc05140",
+      "actionId": "4f68c83125d4135e",
       "action": "input",
       "target": {
         "tag": "input",
@@ -308,21 +309,21 @@
         "ordinal": 4
       },
       "textLength": 14,
-      "observedAt": "2026-09-02T12:18:44.404Z"
+      "observedAt": "2026-09-02T12:58:14.959Z"
     },
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/",
-      "actionId": "ce9f08f936c03b39",
+      "actionId": "986cb0ddf51be27c",
       "action": "submit",
       "target": {
         "tag": "form",
         "role": null,
         "type": null
       },
-      "observedAt": "2026-09-02T12:18:44.658Z"
+      "observedAt": "2026-09-02T12:58:15.317Z"
     }
   ],
   "correlationPolicy": {
@@ -334,8 +335,8 @@
   "timeline": [
     {
       "type": "action",
-      "at": "2026-09-02T12:18:43.146Z",
-      "actionId": "860c01a6dd076350",
+      "at": "2026-09-02T12:58:13.700Z",
+      "actionId": "551bc0539e45419f",
       "source": "browser",
       "action": "click",
       "target": {
@@ -349,42 +350,42 @@
       "type": "error",
       "kind": "error",
       "source": "network",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/api/http-error",
-      "sourceTimestamp": "2026-09-02T12:18:43.152Z",
+      "sourceTimestamp": "2026-09-02T12:58:13.703Z",
       "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "observedAt": "2026-09-02T12:18:43.153Z",
-      "at": "2026-09-02T12:18:43.153Z",
+      "observedAt": "2026-09-02T12:58:13.704Z",
+      "at": "2026-09-02T12:58:13.704Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "860c01a6dd076350",
-        "deltaMs": 7,
+        "afterActionId": "551bc0539e45419f",
+        "deltaMs": 4,
         "windowMs": 10000
       }
     },
     {
       "type": "network",
       "kind": "network-http-error",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
-      "requestId": "69025.6",
-      "cdpMonotonicSeconds": 1690506.438411,
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
+      "requestId": "6820.6",
+      "cdpMonotonicSeconds": 1692876.981017,
       "url": "http://127.0.0.1:4173/api/http-error",
       "method": "GET",
-      "durationToHeadersMs": 6,
+      "durationToHeadersMs": 3,
       "initiatorType": "script",
       "initiatorUrl": "http://127.0.0.1:4173/app.js",
       "initiatorLine": 48,
       "status": 503,
       "statusText": "Service Unavailable",
       "resourceType": "Fetch",
-      "observedAt": "2026-09-02T12:18:43.153Z",
-      "at": "2026-09-02T12:18:43.153Z",
+      "observedAt": "2026-09-02T12:58:13.704Z",
+      "at": "2026-09-02T12:58:13.704Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "860c01a6dd076350",
-        "deltaMs": 7,
+        "afterActionId": "551bc0539e45419f",
+        "deltaMs": 4,
         "windowMs": 10000
       }
     },
@@ -392,24 +393,24 @@
       "type": "error",
       "kind": "error",
       "source": "console",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788351523153.215,
+      "cdpMonotonicSeconds": 1788353893704.296,
       "message": "fixture:request-failed Error: HTTP 503 Service Unavailable\n    at request (http://127.0.0.1:4173/app.js:51:13)",
-      "observedAt": "2026-09-02T12:18:43.154Z",
-      "at": "2026-09-02T12:18:43.154Z",
+      "observedAt": "2026-09-02T12:58:13.706Z",
+      "at": "2026-09-02T12:58:13.706Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "860c01a6dd076350",
-        "deltaMs": 8,
+        "afterActionId": "551bc0539e45419f",
+        "deltaMs": 6,
         "windowMs": 10000
       }
     },
     {
       "type": "action",
-      "at": "2026-09-02T12:18:43.649Z",
-      "actionId": "fd8f2dc7606594e1",
+      "at": "2026-09-02T12:58:14.204Z",
+      "actionId": "2c7ac6126be01ee9",
       "source": "browser",
       "action": "click",
       "target": {
@@ -423,24 +424,24 @@
       "type": "error",
       "kind": "error",
       "source": "console",
-      "targetId": "660A34FA59A5D169ED5DB2799D7A72DF",
+      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
       "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788351523649.345,
+      "cdpMonotonicSeconds": 1788353894203.789,
       "message": "fixture:deliberate-console-error Object",
-      "observedAt": "2026-09-02T12:18:43.650Z",
-      "at": "2026-09-02T12:18:43.650Z",
+      "observedAt": "2026-09-02T12:58:14.204Z",
+      "at": "2026-09-02T12:58:14.204Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "fd8f2dc7606594e1",
-        "deltaMs": 1,
+        "afterActionId": "2c7ac6126be01ee9",
+        "deltaMs": 0,
         "windowMs": 10000
       }
     },
     {
       "type": "action",
-      "at": "2026-09-02T12:18:44.404Z",
-      "actionId": "3053c25b0dc05140",
+      "at": "2026-09-02T12:58:14.959Z",
+      "actionId": "4f68c83125d4135e",
       "source": "browser",
       "action": "input",
       "target": {
@@ -453,8 +454,8 @@
     },
     {
       "type": "action",
-      "at": "2026-09-02T12:18:44.658Z",
-      "actionId": "ce9f08f936c03b39",
+      "at": "2026-09-02T12:58:15.317Z",
+      "actionId": "986cb0ddf51be27c",
       "source": "browser",
       "action": "submit",
       "target": {

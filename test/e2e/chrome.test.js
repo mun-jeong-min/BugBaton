@@ -830,11 +830,12 @@ test("capture records manual actions, writes evidence, and stops its session", {
   try {
     const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir];
     if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
-    const capturePromise = runProcess(process.execPath, args, { timeout: 20_000 });
+    const capturePromise = runProcess(process.execPath, args, { timeout: 35_000 });
     const session = await poll(
       "capture session",
       () => readOptionalJson(join(stateDir, "session.json")),
       (value) => value?.captureActions === true,
+      25_000,
     );
     chromePid = session.chromePid;
     const monitor = await poll(

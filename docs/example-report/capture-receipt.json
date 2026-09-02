@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "completedAt": "2026-09-02T12:59:56.894Z",
+  "endedBy": "duration",
+  "bundleStatus": "complete",
+  "sessionShutdown": {
+    "complete": true,
+    "monitorStopped": true,
+    "browserOwned": true,
+    "browserClosed": true
+  },
+  "evidenceRetained": true
+}
