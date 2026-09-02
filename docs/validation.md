@@ -90,8 +90,8 @@ lane also passed on both Ubuntu and macOS.
 
 ### Package/install smoke
 
-Final `npm pack --dry-run --json` succeeded with 27 package entries, an
-approximately 143 KiB tarball, and approximately 307 KiB of unpacked content.
+Final `npm pack --dry-run --json` succeeded with 28 package entries, an
+approximately 146 KiB tarball, and approximately 316 KiB of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 

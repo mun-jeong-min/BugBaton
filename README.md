@@ -14,6 +14,8 @@ files and shuts the session down.
 
 No account. No cloud. No browser extension. No MCP server. No telemetry.
 
+![Chroma turns a browser reproduction into a durable evidence bundle](docs/demo-overview.svg)
+
 **[Open the real sample report](docs/example-report/README.md)** ·
 **[Inspect its versioned JSON](docs/example-report/report.json)** ·
 **[Verify its shutdown receipt](docs/example-report/capture-receipt.json)**

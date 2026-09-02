@@ -15,6 +15,7 @@ test("package surface and README stay aligned with the public CLI", async () => 
   assert.equal(packageJson.bin.chroma, "./bin/chroma.js");
   assert.equal(packageJson.description, "Reproduce a local Chrome bug once and keep a private, reviewable evidence bundle");
   assert.equal(packageJson.dependencies, undefined, "the MVP must remain zero-runtime-dependency");
+  assert.equal(packageJson.scripts.prepublishOnly, "npm run check");
   assert.ok(packageJson.files.includes("CONTRIBUTING.md"));
   assert.ok(packageJson.files.includes("SECURITY.md"));
   if (process.platform !== "win32") {

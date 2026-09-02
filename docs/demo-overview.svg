@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title description">
+  <title id="title">Chroma turns one browser reproduction into a durable evidence bundle</title>
+  <desc id="description">A terminal starts capture, a developer reproduces an HTTP failure, and Chroma writes a timeline, diagnostics, screenshot, and verified shutdown receipt.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="0.55" stop-color="#151b34"/>
+      <stop offset="1" stop-color="#24164d"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#020617" flood-opacity="0.48"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#818cf8"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="640" rx="28" fill="url(#background)"/>
+  <circle cx="1110" cy="-30" r="250" fill="#7c3aed" opacity="0.12"/>
+  <circle cx="160" cy="690" r="300" fill="#2563eb" opacity="0.1"/>
+
+  <text x="64" y="72" fill="#a5b4fc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">CHROMA CDP</text>
+  <text x="64" y="121" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="39" font-weight="750">Reproduce once. Close Chrome. Keep the evidence.</text>
+  <text x="64" y="157" fill="#aeb8cc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20">One local bug reproduction becomes a private, reviewable bundle.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="205" width="340" height="344" rx="18" fill="#0a0f1e" stroke="#334155"/>
+    <rect x="64" y="205" width="340" height="42" rx="18" fill="#151d31"/>
+    <circle cx="88" cy="226" r="6" fill="#fb7185"/>
+    <circle cx="108" cy="226" r="6" fill="#fbbf24"/>
+    <circle cx="128" cy="226" r="6" fill="#4ade80"/>
+    <text x="150" y="232" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">terminal</text>
+    <text x="88" y="286" fill="#c4b5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">$ chroma demo</text>
+    <text x="88" y="326" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Demo ready on loopback</text>
+    <text x="88" y="354" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Capturing...</text>
+    <rect x="88" y="387" width="196" height="30" rx="15" fill="#312e81"/>
+    <text x="105" y="408" fill="#c7d2fe" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">press Enter when done</text>
+    <text x="88" y="459" fill="#86efac" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Report written</text>
+    <text x="88" y="488" fill="#86efac" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Chrome stopped: yes</text>
+    <text x="88" y="517" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">no account · no cloud</text>
+  </g>
+
+  <path d="M420 376H458" stroke="#818cf8" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="472" y="205" width="336" height="344" rx="18" fill="#111827" stroke="#4338ca"/>
+    <text x="500" y="245" fill="#a5b4fc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">REPRODUCE</text>
+    <text x="500" y="283" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="23" font-weight="700">Use the browser normally</text>
+    <rect x="500" y="313" width="280" height="54" rx="10" fill="#3730a3"/>
+    <text x="520" y="346" fill="#eef2ff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">1. Request HTTP 503</text>
+    <rect x="500" y="379" width="280" height="54" rx="10" fill="#312e81"/>
+    <text x="520" y="412" fill="#eef2ff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">2. Trigger console error</text>
+    <rect x="500" y="445" width="280" height="54" rx="10" fill="#1e293b" stroke="#475569"/>
+    <text x="520" y="478" fill="#e2e8f0" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">3. Input · length only</text>
+    <text x="500" y="526" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="13">Values are never persisted.</text>
+  </g>
+
+  <path d="M824 376H862" stroke="#818cf8" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="876" y="205" width="340" height="344" rx="18" fill="#0f172a" stroke="#7c3aed"/>
+    <text x="904" y="245" fill="#c4b5fd" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">EVIDENCE BUNDLE</text>
+    <text x="904" y="285" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="700">Review after Chrome closes</text>
+    <line x1="904" y1="310" x2="1188" y2="310" stroke="#334155"/>
+    <text x="904" y="348" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">click button #1</text>
+    <text x="924" y="378" fill="#fca5a5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">→ HTTP 503 GET /api/failure</text>
+    <text x="924" y="408" fill="#fca5a5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">→ console error</text>
+    <text x="904" y="447" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">input · length=14</text>
+    <g transform="translate(904 478)">
+      <rect width="82" height="30" rx="8" fill="#1e293b"/>
+      <text x="15" y="20" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">JSON</text>
+      <rect x="91" width="96" height="30" rx="8" fill="#1e293b"/>
+      <text x="105" y="20" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">Markdown</text>
+      <rect x="196" width="74" height="30" rx="8" fill="#1e293b"/>
+      <text x="211" y="20" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">PNG</text>
+    </g>
+    <text x="904" y="532" fill="url(#accent)" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">✓ verified shutdown receipt</text>
+  </g>
+
+  <text x="64" y="600" fill="#64748b" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Zero runtime dependencies · Loopback-only CDP · Redaction before persistence · No telemetry</text>
+</svg>

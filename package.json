@@ -29,6 +29,7 @@
   },
   "scripts": {
     "check": "npm run lint && node --check bin/chroma.js && node --check src/cli.js && node --check src/monitor.js && npm test",
+    "prepublishOnly": "npm run check",
     "test": "node --test test/*.test.js test/fixtures/*.test.mjs",
     "test:e2e": "CHROMA_E2E=1 node --test test/e2e/*.test.js",
     "lint": "eslint bin src test"
