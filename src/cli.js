@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process";
-import { access, lstat, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { access, lstat, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { commandHint, parseArgs } from "./args.js";
 import { CdpConnection } from "./cdp.js";
 import { assertSafeEndpoint, browserInstanceId, browserVersion, chromeBinaryVersion, findChrome, findFreeLoopbackPort, launchChrome, listTabs, normalizeEndpoint, waitForChrome } from "./chrome.js";
@@ -17,14 +19,16 @@ import { assessDemoEvidence, startDemoServer } from "./demo.js";
 
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
+const MAX_BUNDLE_JSON_BYTES = 25 * 1024 * 1024;
+const MAX_BUNDLE_ATTACHMENTS = 100;
 
-const HELP = `chroma — reproduce once, close Chrome, and keep the evidence
+const HELP = `bugbaton — pass the bug, not the browser
 
 A local flight recorder for a browser bug you can reproduce but have not automated.
 No account, cloud, browser extension, or MCP server.
 
 Usage:
-  chroma <command> [options]
+  bugbaton <command> [options]
 
 Session:
   doctor                   Inspect local runtime and connection readiness
@@ -41,6 +45,7 @@ Observe and diagnose:
   network --failed         Show failed and HTTP 4xx/5xx requests
   screenshot               Capture the selected tab as PNG
   report                   Write a shareable local diagnostic bundle
+  verify REPORT_DIR        Verify a saved bundle without opening Chrome
 
 Light interaction:
   click @e1                Click a ref from the latest snapshot
@@ -50,31 +55,32 @@ Light interaction:
 Global options:
   --json                   Emit one versioned JSON envelope on stdout
   --endpoint URL           Override the remembered endpoint
-  --state-dir PATH         Override local state (or CHROMA_STATE_DIR)
+  --state-dir PATH         Override local state (or BUGBATON_STATE_DIR)
   --allow-remote           Permit a non-loopback CDP endpoint (unsafe by default)
   -v, --verbose            Print diagnostic progress to stderr
   -h, --help               Show help without side effects
   --version                Print the version
 
-Run "chroma <command> --help" for command-specific usage.`;
+Run "bugbaton <command> --help" for command-specific usage.`;
 
 const COMMAND_HELP = {
-  doctor: "Usage: chroma doctor [--chrome PATH] [--json]\nRead-only checks for Node, Chrome, saved session, monitor, and endpoint.",
-  demo: "Usage: chroma demo [--output DIR] [--duration SECONDS] [--title TEXT] [--expected TEXT] [--actual TEXT] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nOpen a packaged local failure page, capture your actions and diagnostics, write a report, and stop. No existing app or network service is required.",
-  capture: "Usage: chroma capture [--url URL] [--output DIR] [--duration SECONDS] [--title TEXT] [--expected TEXT] [--actual TEXT] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. A free loopback CDP port and unique report directory are selected by default. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
-  launch: "Usage: chroma launch [--chrome PATH] [--port 9222] [--profile PATH] [--url URL] [--headless] [--deterministic] [--json]",
-  connect: "Usage: chroma connect [ENDPOINT] [--allow-remote] [--json]\nDefault endpoint: http://127.0.0.1:9222",
-  stop: "Usage: chroma stop [--json]\nStop the observation monitor and close Chrome only when Chroma launched and can verify it.",
-  tabs: "Usage: chroma tabs [--endpoint URL] [--json]",
-  snapshot: "Usage: chroma snapshot [--tab ID|URL|TITLE] [--all] [--json]",
-  click: "Usage: chroma click @eN [--tab MATCH] [--json]\n       chroma click --selector CSS [--tab MATCH]",
-  fill: "Usage: chroma fill @eN TEXT [--tab MATCH] [--json]\n       chroma fill @eN --stdin < value.txt\n       chroma fill --selector CSS TEXT",
-  press: "Usage: chroma press [@eN] KEY [--tab MATCH] [--json]",
-  errors: "Usage: chroma errors [--tab MATCH] [--since ISO_TIME] [--limit N] [--clear] [--json]",
-  network: "Usage: chroma network --failed [--tab MATCH] [--since ISO_TIME] [--limit N] [--clear] [--json]",
-  screenshot: "Usage: chroma screenshot [--tab MATCH] [--output FILE] [--full-page] [--json]",
-  report: "Usage: chroma report [--tab MATCH] [--output DIR] [--title TEXT] [--expected TEXT] [--actual TEXT] [--no-screenshot] [--json]",
-  version: "Usage: chroma version [--json]",
+  doctor: "Usage: bugbaton doctor [--chrome PATH] [--json]\nRead-only checks for Node, Chrome, saved session, monitor, and endpoint.",
+  demo: "Usage: bugbaton demo [--output DIR] [--duration SECONDS] [--title TEXT] [--expected TEXT] [--actual TEXT] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nOpen a packaged local failure page, capture your actions and diagnostics, write a report, and stop. No existing app or network service is required.",
+  capture: "Usage: bugbaton capture [--url URL] [--output DIR] [--duration SECONDS] [--title TEXT] [--expected TEXT] [--actual TEXT] [--chrome PATH] [--port PORT] [--profile PATH] [--headless] [--deterministic] [--no-screenshot] [--json]\nLaunch isolated Chrome, capture a privacy-safe manual action trail, write a report, and stop. A free loopback CDP port and unique report directory are selected by default. Without --duration, press Enter or Ctrl+C after reproducing the bug.",
+  launch: "Usage: bugbaton launch [--chrome PATH] [--port 9222] [--profile PATH] [--url URL] [--headless] [--deterministic] [--json]",
+  connect: "Usage: bugbaton connect [ENDPOINT] [--allow-remote] [--json]\nDefault endpoint: http://127.0.0.1:9222",
+  stop: "Usage: bugbaton stop [--json]\nStop the observation monitor and close Chrome only when BugBaton launched and can verify it.",
+  tabs: "Usage: bugbaton tabs [--endpoint URL] [--json]",
+  snapshot: "Usage: bugbaton snapshot [--tab ID|URL|TITLE] [--all] [--json]",
+  click: "Usage: bugbaton click @eN [--tab MATCH] [--json]\n       bugbaton click --selector CSS [--tab MATCH]",
+  fill: "Usage: bugbaton fill @eN TEXT [--tab MATCH] [--json]\n       bugbaton fill @eN --stdin < value.txt\n       bugbaton fill --selector CSS TEXT",
+  press: "Usage: bugbaton press [@eN] KEY [--tab MATCH] [--json]",
+  errors: "Usage: bugbaton errors [--tab MATCH] [--since ISO_TIME] [--limit N] [--clear] [--json]",
+  network: "Usage: bugbaton network --failed [--tab MATCH] [--since ISO_TIME] [--limit N] [--clear] [--json]",
+  screenshot: "Usage: bugbaton screenshot [--tab MATCH] [--output FILE] [--full-page] [--json]",
+  report: "Usage: bugbaton report [--tab MATCH] [--output DIR] [--title TEXT] [--expected TEXT] [--actual TEXT] [--no-screenshot] [--json]",
+  verify: "Usage: bugbaton verify REPORT_DIR [--json]\nValidate a BugBaton report, attachment hashes, safe paths, and capture-receipt consistency without opening Chrome.",
+  version: "Usage: bugbaton version [--json]",
 };
 
 function cliError(message, code = "OPERATION_FAILED", exitCode = 1) {
@@ -112,11 +118,11 @@ async function startMonitor(paths, endpoint, instanceId, sessionId, verbose = fa
         if (state?.pid === current.pid && state.readyAt) return { ...state, reused: true };
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-      throw codedError("MONITOR_NOT_READY", "The observation monitor is alive but not ready", { exitCode: 3, retryable: true, hint: "Run `chroma doctor`; retry when the monitor check is ready." });
+      throw codedError("MONITOR_NOT_READY", "The observation monitor is alive but not ready", { exitCode: 3, retryable: true, hint: "Run `bugbaton doctor`; retry when the monitor check is ready." });
     }
     const deadline = Date.now() + 2_000;
     while (Date.now() < deadline && await pidAlive(current.pid)) await new Promise((resolve) => setTimeout(resolve, 100));
-    if (await pidAlive(current.pid)) throw codedError("MONITOR_HANDOFF", "The previous observation monitor is still stopping", { exitCode: 3, retryable: true, hint: "Retry in a moment; use `chroma doctor` if the process remains stuck." });
+    if (await pidAlive(current.pid)) throw codedError("MONITOR_HANDOFF", "The previous observation monitor is still stopping", { exitCode: 3, retryable: true, hint: "Retry in a moment; use `bugbaton doctor` if the process remains stuck." });
   }
   if (verbose) process.stderr.write("Starting background observation monitor…\n");
   const child = spawn(process.execPath, [MONITOR, "--state-dir", paths.root], { detached: true, stdio: "ignore" });
@@ -127,7 +133,7 @@ async function startMonitor(paths, endpoint, instanceId, sessionId, verbose = fa
     if (state?.pid === child.pid && state.readyAt) return { ...state, reused: false };
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw codedError("MONITOR_START_FAILED", "Observation monitor did not start", { exitCode: 3, retryable: true, hint: "Run `chroma doctor` to inspect state permissions and endpoint health." });
+  throw codedError("MONITOR_START_FAILED", "Observation monitor did not start", { exitCode: 3, retryable: true, hint: "Run `bugbaton doctor` to inspect state permissions and endpoint health." });
 }
 
 async function resolveSession(parsed, paths) {
@@ -140,7 +146,7 @@ async function resolveSession(parsed, paths) {
 function assertSessionIdentity(stored, version, endpoint) {
   if (!stored?.browserInstanceId || stored.endpoint !== endpoint) return;
   if (stored.browserInstanceId !== browserInstanceId(version)) {
-    throw cliError("A different Chrome process now owns the saved endpoint; run `chroma connect` to establish a new observation window", "STALE_SESSION", 3);
+    throw cliError("A different Chrome process now owns the saved endpoint; run `bugbaton connect` to establish a new observation window", "STALE_SESSION", 3);
   }
 }
 
@@ -165,7 +171,15 @@ async function nearestWritableParent(target) {
       const info = await stat(current);
       let writable = true;
       try { await access(current, constants.W_OK); } catch { writable = false; }
-      return { path: current, exists: current === target, writable, mode: (info.mode & 0o777).toString(8).padStart(3, "0"), ownerOnly: (info.mode & 0o077) === 0 };
+      const posixPermissions = process.platform !== "win32";
+      return {
+        path: current,
+        exists: current === target,
+        writable,
+        mode: posixPermissions ? (info.mode & 0o777).toString(8).padStart(3, "0") : null,
+        ownerOnly: posixPermissions ? (info.mode & 0o077) === 0 : null,
+        permissionModel: posixPermissions ? "posix-mode" : "platform-acl-not-inspected",
+      };
     } catch (error) {
       if (error.code !== "ENOENT") return { path: current, exists: false, writable: false, error: error.message };
       const parent = path.dirname(current);
@@ -176,7 +190,7 @@ async function nearestWritableParent(target) {
 }
 
 function runtimeDoctorCheck(nodeOk) {
-  return { id: "runtime", status: nodeOk ? "pass" : "fail", summary: `Chroma ${VERSION} on Node ${process.version}`, observed: { requiredNodeMajor: 22 } };
+  return { id: "runtime", status: nodeOk ? "pass" : "fail", summary: `BugBaton ${VERSION} on Node ${process.version}`, observed: { requiredNodeMajor: 22 } };
 }
 
 function chromeDoctorCheck(chrome, chromeVersion) {
@@ -188,9 +202,11 @@ function stateDoctorCheck(state, metadataErrors = []) {
   let summary = "State path is not writable";
   if (metadataErrors.length) {
     summary = "State metadata contains invalid JSON";
-  } else if (state.writable && (!state.exists || state.ownerOnly)) {
+  } else if (state.writable && (!state.exists || state.ownerOnly || state.permissionModel === "platform-acl-not-inspected")) {
     status = "pass";
-    summary = "State path is writable with an owner-only directory when materialized";
+    summary = state.permissionModel === "platform-acl-not-inspected"
+      ? "State path is writable; platform ACLs were not inspected"
+      : "State path is writable with an owner-only directory when materialized";
   } else if (state.writable) {
     status = "warn";
     summary = "State directory is writable but accessible by group/others";
@@ -225,7 +241,7 @@ function eventStoreDoctorCheck(monitor, cursor, collectorHealthy) {
 
 function profileDoctorCheck(session, profileInsideState) {
   let summary = "External Chrome profile ownership is unknown";
-  if (session?.profile) summary = profileInsideState ? "Chrome profile is isolated under Chroma state" : "Explicit Chrome profile is outside Chroma state";
+  if (session?.profile) summary = profileInsideState ? "Chrome profile is isolated under BugBaton state" : "Explicit Chrome profile is outside BugBaton state";
   return { id: "profile", status: session?.profile && profileInsideState ? "pass" : "warn", summary, observed: { path: session?.profile ?? null, isolated: session?.profile ? profileInsideState : null } };
 }
 
@@ -237,12 +253,12 @@ function deriveDoctorStatus({ version, instanceMatches, monitorRunning, collecto
 }
 
 function deriveDoctorNextAction({ version, instanceMatches, monitor, monitorRunning, collectorHealthy, stateCheck }) {
-  if (stateCheck.status === "fail") return "Fix state-directory permissions or move the invalid state file named by the state check, then run `chroma connect`.";
-  if (!version) return "Run `chroma launch` or start Chrome with remote debugging and run `chroma connect`.";
-  if (!instanceMatches) return "Run `chroma connect` to trust the Chrome process now at this endpoint.";
-  if (!monitorRunning || !monitor?.readyAt) return "Run `chroma connect` again to start a ready observation monitor.";
-  if (!collectorHealthy) return "Check state-directory permissions and free space, then run `chroma connect` to start a clean observation window.";
-  return "Run `chroma tabs` or `chroma snapshot`.";
+  if (stateCheck.status === "fail") return "Fix state-directory permissions or move the invalid state file named by the state check, then run `bugbaton connect`.";
+  if (!version) return "Run `bugbaton launch` or start Chrome with remote debugging and run `bugbaton connect`.";
+  if (!instanceMatches) return "Run `bugbaton connect` to trust the Chrome process now at this endpoint.";
+  if (!monitorRunning || !monitor?.readyAt) return "Run `bugbaton connect` again to start a ready observation monitor.";
+  if (!collectorHealthy) return "Check state-directory permissions and free space, then run `bugbaton connect` to start a clean observation window.";
+  return "Run `bugbaton tabs` or `bugbaton snapshot`.";
 }
 
 function buildDoctorResult({ status, checks, nodeOk, chrome, chromeVersion, session, paths, endpoint, version, endpointError, monitor, monitorRunning, nextAction }) {
@@ -317,7 +333,7 @@ async function commandLaunch(parsed, paths, { captureActions = false } = {}) {
     const occupied = await browserVersion(endpoint);
     throw codedError("PORT_IN_USE", `CDP port ${port} already belongs to ${occupied.Browser ?? "a browser"}`, {
       exitCode: 2,
-      hint: `Choose another --port, or run \`chroma connect ${endpoint}\` to begin a new observation window.`,
+      hint: `Choose another --port, or run \`bugbaton connect ${endpoint}\` to begin a new observation window.`,
       details: { endpoint, browser: occupied.Browser ?? null },
     });
   } catch (error) {
@@ -334,7 +350,7 @@ async function commandLaunch(parsed, paths, { captureActions = false } = {}) {
     throw codedError("CDP_STARTUP_FAILED", `Chrome did not expose CDP at ${endpoint}`, {
       exitCode: 3,
       retryable: true,
-      hint: "Check the Chrome binary/profile, choose a free --port, and run `chroma doctor`.",
+      hint: "Check the Chrome binary/profile, choose a free --port, and run `bugbaton doctor`.",
       details: { endpoint, cause: error.message },
     });
   }
@@ -351,10 +367,10 @@ async function commandConnect(parsed, paths) {
   const endpoint = normalizeEndpoint(parsed.positionals[0] ?? parsed.options.endpoint ?? "http://127.0.0.1:9222");
   assertSafeEndpoint(endpoint, parsed.options.allow_remote);
   const version = await browserVersion(endpoint).catch((error) => {
-    throw codedError("CDP_UNAVAILABLE", `Cannot reach Chrome at ${endpoint}: ${error.message}`, { exitCode: 3, retryable: true, hint: "Start Chrome with remote debugging, or run `chroma launch`." });
+    throw codedError("CDP_UNAVAILABLE", `Cannot reach Chrome at ${endpoint}: ${error.message}`, { exitCode: 3, retryable: true, hint: "Start Chrome with remote debugging, or run `bugbaton launch`." });
   });
   const instanceId = browserInstanceId(version);
-  const session = { schemaVersion: 1, sessionId: randomUUID(), endpoint, browserInstanceId: instanceId, connectedAt: new Date().toISOString(), source: "connect", browser: version.Browser, protocolVersion: version["Protocol-Version"] ?? null, warnings: parsed.options.allow_remote ? ["Remote CDP grants browser-level control and is not authenticated by Chroma."] : [] };
+  const session = { schemaVersion: 1, sessionId: randomUUID(), endpoint, browserInstanceId: instanceId, connectedAt: new Date().toISOString(), source: "connect", browser: version.Browser, protocolVersion: version["Protocol-Version"] ?? null, warnings: parsed.options.allow_remote ? ["Remote CDP grants browser-level control and is not authenticated by BugBaton."] : [] };
   await writeJson(paths.session, session);
   const monitor = await startMonitor(paths, endpoint, instanceId, session.sessionId, parsed.options.verbose || parsed.options.v);
   return { ...session, monitor };
@@ -412,8 +428,8 @@ async function commandStop(parsed, paths) {
   const monitorStopped = !monitor?.pid || await waitForPidExit(monitor.pid);
   if (monitorStopped) await rm(paths.monitor, { force: true });
   const warnings = [];
-  if (!monitorStopped) warnings.push("The observation monitor did not stop before the timeout; run `chroma doctor` before starting another session.");
-  if (browser.owned && !browser.closed) warnings.push(`Chroma left its Chrome process running because it could not close it safely (${browser.reason}).`);
+  if (!monitorStopped) warnings.push("The observation monitor did not stop before the timeout; run `bugbaton doctor` before starting another session.");
+  if (browser.owned && !browser.closed) warnings.push(`BugBaton left its Chrome process running because it could not close it safely (${browser.reason}).`);
   return {
     activeSession: Boolean(session),
     stopped: monitorStopped && (!browser.owned || browser.closed),
@@ -533,7 +549,7 @@ async function commandDemo(parsed, paths) {
         `Demo ended without the promised evidence (${actions} actions, ${errors} errors, ${failedNetwork} failed requests). The report was kept at ${capture.report.path} and Chrome was closed. Run it again and complete the HTTP 503 step before ending capture.`,
         {
           retryable: true,
-          hint: "Run `chroma demo` again, complete at least the HTTP 503 step, then end the capture.",
+          hint: "Run `bugbaton demo` again, complete at least the HTTP 503 step, then end the capture.",
           details: { reportPath: capture.report.path, evidenceRequirement: capture.report.evidenceRequirement, sessionShutdown: capture.receipt?.sessionShutdown ?? null },
         },
       );
@@ -665,7 +681,7 @@ function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session,
     status: partial ? "partial" : "complete",
     generatedAt,
     completedAt,
-    producer: { name: "chroma", version: VERSION, node: process.version, platform: process.platform },
+    producer: { name: "bugbaton", version: VERSION, node: process.version, platform: process.platform },
     browser: { product: version.Browser ?? session?.browser ?? null, protocolVersion: version["Protocol-Version"] ?? session?.protocolVersion ?? null },
     connection: buildReportConnection(session, endpoint),
     tab: { id: tab.id, title: tab.title, url: redactUrl(tab.url) },
@@ -688,7 +704,7 @@ function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session,
 async function commandReport(parsed, paths, endpoint, context = {}) {
   const generatedAt = new Date().toISOString();
   const claim = reportClaim(parsed.options);
-  const outputDir = path.resolve(parsed.options.output ?? `chroma-report-${generatedAt.replaceAll(":", "-").replace(".", "-")}-${process.pid}`);
+  const outputDir = path.resolve(parsed.options.output ?? `bugbaton-report-${generatedAt.replaceAll(":", "-").replace(".", "-")}-${process.pid}`);
   try {
     await lstat(outputDir);
     throw codedError("OUTPUT_EXISTS", `Report output already exists: ${outputDir}`, {
@@ -740,7 +756,7 @@ async function commandReport(parsed, paths, endpoint, context = {}) {
     ]);
     const browserActions = browserActionResult.events;
     const actions = [
-      ...cliActions.map((action) => ({ source: "chroma-cli", ...action })),
+      ...cliActions.map((action) => ({ source: "bugbaton-cli", ...action })),
       ...browserActions,
     ].sort((left, right) => Date.parse(left.startedAt ?? left.observedAt) - Date.parse(right.startedAt ?? right.observedAt));
     sections.actionOutcomes = { status: "collected", reason: null, capturedAt: new Date().toISOString(), boundaryId: evidenceLog.cursor.id };
@@ -766,7 +782,7 @@ async function commandReport(parsed, paths, endpoint, context = {}) {
     const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, claim, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor, evidenceRequirement });
     await writeFile(path.join(stagingDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`, { flag: "wx", mode: 0o600 });
     const evidenceLine = evidenceRequirement ? `- Demo evidence requirement: **${evidenceRequirement.status}** (${evidenceRequirement.description})\n` : "";
-    const markdown = `# Chroma diagnostic report\n\n- Bundle status: **${report.status}**\n${evidenceLine}- Observation coverage: **best effort**\n- Complete since navigation: **no**\n- Generated: ${report.generatedAt}\n\n${reportClaimMarkdown(claim)}Page: **${markdownInline(tab.title || "(untitled)")}**\n\nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
+    const markdown = `# BugBaton diagnostic report\n\n- Bundle status: **${report.status}**\n${evidenceLine}- Observation coverage: **best effort**\n- Complete since navigation: **no**\n- Generated: ${report.generatedAt}\n\n${reportClaimMarkdown(claim)}Page: **${markdownInline(tab.title || "(untitled)")}**\n\nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Verify this bundle\n\nFrom this directory, run \`bugbaton verify .\`. This checks the compatible report header, safe attachment paths, declared file sizes and SHA-256 hashes, and capture-receipt consistency. It does not prove who created the bundle.\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`bugbaton launch\`, \`bugbaton connect\`, or \`bugbaton capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
     await writeFile(path.join(stagingDir, "README.md"), markdown, { flag: "wx", mode: 0o600 });
     await rename(stagingDir, outputDir);
     return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary, evidenceRequirement };
@@ -812,7 +828,7 @@ async function runConnectedCommand(command, parsed, paths, endpoint, liveVersion
   }
   if (command === "screenshot") {
     requirePositionals(parsed, 0, 0, COMMAND_HELP.screenshot);
-    const file = parsed.options.output ?? `chroma-${Date.now()}-${process.pid}.png`;
+    const file = parsed.options.output ?? `bugbaton-${Date.now()}-${process.pid}.png`;
     return captureScreenshot(endpoint, parsed.options.tab, file, parsed.options.full_page);
   }
   if (command === "report") {
@@ -831,7 +847,7 @@ async function executeCommand(command, parsed, paths) {
   if (command === "stop") return commandStop(parsed, paths);
   const { endpoint, stored } = await resolveSession(parsed, paths);
   const liveVersion = await browserVersion(endpoint).catch((error) => {
-    throw codedError("CDP_UNAVAILABLE", `Cannot reach Chrome at ${endpoint}: ${error.message}`, { exitCode: 3, retryable: true, hint: "Run `chroma doctor`, then launch or connect to a reachable Chrome." });
+    throw codedError("CDP_UNAVAILABLE", `Cannot reach Chrome at ${endpoint}: ${error.message}`, { exitCode: 3, retryable: true, hint: "Run `bugbaton doctor`, then launch or connect to a reachable Chrome." });
   });
   assertSessionIdentity(stored, liveVersion, endpoint);
   return runConnectedCommand(command, parsed, paths, endpoint, liveVersion);
@@ -841,13 +857,211 @@ function countLabel(count, singular) {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
 
+function reportVerificationError(message, details) {
+  return codedError("REPORT_VERIFICATION_FAILED", message, {
+    hint: "Use an unchanged BugBaton report directory, or capture the bug again.",
+    details,
+  });
+}
+
+async function sha256File(file) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(file);
+    stream.on("error", reject);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+function safeBundleFile(root, relativePath) {
+  const portableName = typeof relativePath === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(relativePath);
+  const windowsStem = portableName ? relativePath.split(".", 1)[0].toUpperCase() : "";
+  const windowsReserved = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/u.test(windowsStem);
+  if (!portableName || windowsReserved || relativePath.endsWith(".")) {
+    throw reportVerificationError("The report contains an unsafe attachment path", { path: relativePath ?? null });
+  }
+  return path.join(root, relativePath);
+}
+
+async function readBundleJson(file, label) {
+  try {
+    const metadata = await lstat(file);
+    if (!metadata.isFile()) throw new Error(`${label} is not a regular file`);
+    if (metadata.size > MAX_BUNDLE_JSON_BYTES) throw new Error(`${label} exceeds the ${MAX_BUNDLE_JSON_BYTES}-byte verification limit`);
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    throw reportVerificationError(`${label} is missing or invalid JSON`, { path: file, cause: error.code ?? error.name });
+  }
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function validTimestamp(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function reportSectionStatusesValid(sections) {
+  return [
+    [sections?.snapshot?.status, ["collected", "partial"]],
+    [sections?.errors?.status, ["collected", "partial"]],
+    [sections?.failedNetwork?.status, ["collected", "partial"]],
+    [sections?.actionOutcomes?.status, ["collected", "partial"]],
+    [sections?.screenshot?.status, ["collected", "partial", "skipped"]],
+  ].every(([status, accepted]) => accepted.includes(status));
+}
+
+function reportStructuresValid(report) {
+  const requiredObjects = [report.browser, report.connection, report.tab, report.observation, report.redaction, report.sections, report.snapshot];
+  const requiredArrays = [report.snapshot?.nodes, report.errors, report.failedNetwork, report.actionOutcomes, report.timeline];
+  return requiredObjects.every(isRecord) && requiredArrays.every(Array.isArray);
+}
+
+function reportEvidenceShapeValid(report) {
+  return [
+    typeof report.tab?.id === "string",
+    typeof report.tab?.url === "string",
+    isRecord(report.observation?.boundary),
+    typeof report.observation?.boundary?.id === "string",
+    typeof report.snapshot?.targetId === "string",
+    typeof report.snapshot?.url === "string",
+    report.screenshot === null || typeof report.screenshot === "string",
+    report.observation?.bestEffort === true,
+    report.observation?.coverage === "best-effort",
+    report.redaction?.policy === "mandatory-v1",
+    reportSectionStatusesValid(report.sections),
+  ].every(Boolean);
+}
+
+function verifyReportHeader(report) {
+  if (!isRecord(report)) {
+    throw reportVerificationError("report.json must contain a report object", { type: report === null ? "null" : typeof report });
+  }
+  if (report.schemaVersion !== 1 || report.producer?.name !== "bugbaton" || typeof report.producer.version !== "string" || !report.producer.version) {
+    throw reportVerificationError("Unsupported report schema or producer", { schemaVersion: report.schemaVersion ?? null, producer: report.producer?.name ?? null });
+  }
+  if (!(["complete", "partial"].includes(report.status)) || !validTimestamp(report.generatedAt) || !validTimestamp(report.completedAt) || !reportStructuresValid(report) || !reportEvidenceShapeValid(report)) {
+    throw reportVerificationError("The report header is incomplete", { status: report.status ?? null, generatedAt: report.generatedAt ?? null });
+  }
+}
+
+async function verifyReadme(root) {
+  try {
+    const readme = await lstat(path.join(root, "README.md"));
+    if (!readme.isFile()) throw new Error("README.md is not a regular file");
+  } catch (error) {
+    throw reportVerificationError("README.md is missing or invalid", { path: path.join(root, "README.md"), cause: error.code ?? error.message });
+  }
+}
+
+async function verifyAttachments(root, report) {
+  if (report.artifactIntegrity?.algorithm !== "sha256" || !Array.isArray(report.artifactIntegrity.attachments)) {
+    throw reportVerificationError("The report has no supported attachment-integrity manifest", { algorithm: report.artifactIntegrity?.algorithm ?? null });
+  }
+  if (report.artifactIntegrity.attachments.length > MAX_BUNDLE_ATTACHMENTS) {
+    throw reportVerificationError("The attachment manifest exceeds the verification limit", { attachments: report.artifactIntegrity.attachments.length, limit: MAX_BUNDLE_ATTACHMENTS });
+  }
+  const attachments = [];
+  const seen = new Set();
+  for (const attachment of report.artifactIntegrity.attachments) {
+    if (!attachment || typeof attachment !== "object" || !Number.isSafeInteger(attachment.bytes) || attachment.bytes < 0 || !/^[a-f0-9]{64}$/u.test(attachment.sha256 ?? "")) {
+      throw reportVerificationError("The attachment manifest contains invalid metadata", { path: attachment?.path ?? null });
+    }
+    const file = safeBundleFile(root, attachment.path);
+    if (seen.has(attachment.path)) throw reportVerificationError("The attachment manifest contains a duplicate path", { path: attachment.path });
+    seen.add(attachment.path);
+    let metadata;
+    try { metadata = await lstat(file); } catch (error) {
+      throw reportVerificationError("A declared attachment is missing", { path: attachment.path, cause: error.code ?? error.message });
+    }
+    if (!metadata.isFile() || metadata.size !== attachment.bytes) {
+      throw reportVerificationError("A declared attachment has the wrong size or type", { path: attachment.path, expectedBytes: attachment.bytes, actualBytes: metadata.size });
+    }
+    let sha256;
+    try {
+      sha256 = await sha256File(file);
+    } catch (error) {
+      throw reportVerificationError("A declared attachment could not be read", { path: attachment.path, cause: error.code ?? error.message });
+    }
+    if (sha256 !== attachment.sha256) {
+      throw reportVerificationError("A declared attachment failed SHA-256 verification", { path: attachment.path, expectedSha256: attachment.sha256, actualSha256: sha256 });
+    }
+    attachments.push({ path: attachment.path, bytes: metadata.size, sha256, verified: true });
+  }
+  if (report.screenshot && !seen.has(report.screenshot)) {
+    throw reportVerificationError("The screenshot is not covered by the attachment-integrity manifest", { path: report.screenshot });
+  }
+  return attachments;
+}
+
+function receiptShapeValid(value) {
+  const shutdown = value?.sessionShutdown;
+  return [
+    isRecord(value),
+    value?.schemaVersion === 1,
+    validTimestamp(value?.completedAt),
+    typeof value?.endedBy === "string",
+    typeof value?.evidenceRetained === "boolean",
+    isRecord(shutdown),
+    typeof shutdown?.complete === "boolean",
+    typeof shutdown?.monitorStopped === "boolean",
+    typeof shutdown?.browserOwned === "boolean",
+    typeof shutdown?.browserClosed === "boolean" || shutdown?.browserClosed === null,
+  ].every(Boolean);
+}
+
+function expectedShutdownComplete(shutdown) {
+  return shutdown.monitorStopped && (!shutdown.browserOwned || shutdown.browserClosed === true);
+}
+
+async function verifyReceipt(root, report) {
+  const receiptPath = path.join(root, "capture-receipt.json");
+  try {
+    const metadata = await lstat(receiptPath);
+    if (!metadata.isFile()) throw reportVerificationError("capture-receipt.json is not a regular file", { path: receiptPath });
+    const value = await readBundleJson(receiptPath, "capture-receipt.json");
+    const shutdown = value?.sessionShutdown;
+    const shapeValid = receiptShapeValid(value);
+    const expectedComplete = shapeValid ? expectedShutdownComplete(shutdown) : null;
+    const evidenceMatches = isDeepStrictEqual(value?.evidenceRequirement ?? null, report.evidenceRequirement ?? null);
+    if (!shapeValid || value.bundleStatus !== report.status || shutdown.complete !== expectedComplete || !evidenceMatches) {
+      throw reportVerificationError("capture-receipt.json is inconsistent with the report", { receiptSchemaVersion: value?.schemaVersion ?? null, receiptBundleStatus: value?.bundleStatus ?? null, reportStatus: report.status ?? null });
+    }
+    return { present: true, consistent: true, shutdownComplete: value.sessionShutdown.complete, evidenceRetained: value.evidenceRetained === true };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return { present: false, consistent: null, shutdownComplete: null, evidenceRetained: null };
+  }
+}
+
+async function commandVerify(parsed) {
+  requirePositionals(parsed, 1, 1, COMMAND_HELP.verify);
+  const root = path.resolve(parsed.positionals[0]);
+  const report = await readBundleJson(path.join(root, "report.json"), "report.json");
+  verifyReportHeader(report);
+  await verifyReadme(root);
+  const attachments = await verifyAttachments(root, report);
+  const receipt = await verifyReceipt(root, report);
+  return {
+    status: "verified",
+    path: root,
+    report: { schemaVersion: report.schemaVersion, bundleStatus: report.status, producer: report.producer, generatedAt: report.generatedAt },
+    attachments,
+    receipt,
+    evidenceRequirement: report.evidenceRequirement ?? null,
+    assurance: "Structure and declared attachment integrity verified; authenticity is not established.",
+  };
+}
+
 const FORMATTERS = {
   doctor: (value) => `${value.status === "ready" ? "✓" : "!"} ${value.status}\nChrome: ${value.chrome.path ?? "not found"}\nEndpoint: ${value.endpoint.reachable ? value.endpoint.browser : value.endpoint.error}\nMonitor: ${value.monitor.running ? `running (pid ${value.monitor.pid})` : "not running"}\nNext: ${value.nextAction}`,
   demo: (value) => `Demo complete\nWrote report to ${value.report.path}\n${countLabel(value.report.summary.errors, "error")}, ${countLabel(value.report.summary.failedNetwork, "failed request")}, ${countLabel(value.report.summary.actions, "reproduction action")}\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   capture: (value) => `Wrote report to ${value.report.path}\n${countLabel(value.report.summary.errors, "error")}, ${countLabel(value.report.summary.failedNetwork, "failed request")}, ${countLabel(value.report.summary.actions, "reproduction action")}\nChrome session stopped: ${value.stopped.stopped ? "yes" : "incomplete"}`,
   launch: (value) => `Chrome launched (pid ${value.chromePid})\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
   connect: (value) => `Connected to ${value.browser}\n${value.endpoint}\nMonitor: pid ${value.monitor.pid}`,
-  stop: (value) => value.activeSession ? `Observation stopped\nOwned Chrome closed: ${value.browser.owned ? value.browser.closed ? "yes" : "no" : "not applicable"}\nEvidence retained in ${value.stateDir}` : "No active Chroma session.",
+  stop: (value) => value.activeSession ? `Observation stopped\nOwned Chrome closed: ${value.browser.owned ? value.browser.closed ? "yes" : "no" : "not applicable"}\nEvidence retained in ${value.stateDir}` : "No active BugBaton session.",
   tabs: (value) => formatRows(value.tabs, [{ label: "ID", value: (row) => row.id.slice(0, 10) }, { label: "TITLE", value: (row) => row.title }, { label: "URL", value: (row) => row.url }]),
   snapshot: snapshotHuman,
   click: (value) => `Clicked ${value.ref ?? value.selector}`,
@@ -857,6 +1071,7 @@ const FORMATTERS = {
   network: (value) => value.events.length ? value.events.map((event) => `${event.status ?? "FAIL"} ${safeSingleLine(event.url ?? event.message)}`).join("\n") : `No observed failed requests for ${safeSingleLine(value.url)}.`,
   screenshot: (value) => `Wrote ${value.path} (${value.bytes} bytes)`,
   report: (value) => `Wrote report to ${value.path}\n${countLabel(value.summary.errors, "error")}, ${countLabel(value.summary.failedNetwork, "failed request")}, ${countLabel(value.summary.snapshotNodes, "snapshot node")}`,
+  verify: (value) => `Verified BugBaton report at ${value.path}\n${countLabel(value.attachments.length, "attachment")} verified\nCapture shutdown: ${value.receipt.present ? value.receipt.shutdownComplete ? "complete" : "incomplete" : "not recorded"}\nAssurance: ${value.assurance}`,
 };
 
 export async function main(argv) {
@@ -864,7 +1079,7 @@ export async function main(argv) {
   try { parsed = parseArgs(argv); } catch (error) {
     const json = argv.includes("--json");
     if (json) process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: false, command: commandHint(argv), data: null, error: errorPayload(error, "USAGE_ERROR") })}\n`);
-    else process.stderr.write(`chroma: ${safeSingleLine(error.message)}\nTry 'chroma --help'.\n`);
+    else process.stderr.write(`bugbaton: ${safeSingleLine(error.message)}\nTry 'bugbaton --help'.\n`);
     process.exitCode = error.exitCode ?? 2;
     return;
   }
@@ -883,14 +1098,14 @@ export async function main(argv) {
   }
   const command = parsed.command;
   try {
-    const data = await executeCommand(command, parsed, paths);
+    const data = command === "verify" ? await commandVerify(parsed) : await executeCommand(command, parsed, paths);
     if (!parsed.json) {
       for (const warning of [...(data.warnings ?? []), ...(data.warning ? [data.warning] : [])]) process.stderr.write(`warning: ${warning}\n`);
     }
     output(command, data, parsed.json, FORMATTERS[command]);
   } catch (error) {
     if (parsed.json) process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: false, command, data: null, error: errorPayload(error) })}\n`);
-    else process.stderr.write(`chroma: ${safeSingleLine(error.message)}\n`);
+    else process.stderr.write(`bugbaton: ${safeSingleLine(error.message)}\n`);
     process.exitCode = error.exitCode ?? 1;
   }
 }

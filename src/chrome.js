@@ -127,12 +127,12 @@ export function launchChrome(binary, { port, profile, url, headless, determinist
 }
 
 export function selectTab(tabs, selector) {
-  if (!tabs.length) throw codedError("NO_PAGE_TABS", "No page tabs are available", { hint: "Open the local app in Chrome, then run `chroma tabs`." });
+  if (!tabs.length) throw codedError("NO_PAGE_TABS", "No page tabs are available", { hint: "Open the local app in Chrome, then run `bugbaton tabs`." });
   if (!selector) return tabs[0];
   const exact = tabs.find((tab) => tab.id === selector);
   if (exact) return exact;
   const matches = tabs.filter((tab) => tab.id.startsWith(selector) || tab.url.includes(selector) || tab.title.includes(selector));
   if (matches.length === 1) return matches[0];
-  if (!matches.length) throw codedError("TAB_NOT_FOUND", `No tab matches ${JSON.stringify(selector)}`, { hint: "Run `chroma tabs` and pass an exact target ID." });
-  throw codedError("TAB_AMBIGUOUS", `Tab selector ${JSON.stringify(selector)} is ambiguous (${matches.length} matches)`, { exitCode: 2, hint: "Pass an exact target ID from `chroma tabs`.", details: { matches: matches.length } });
+  if (!matches.length) throw codedError("TAB_NOT_FOUND", `No tab matches ${JSON.stringify(selector)}`, { hint: "Run `bugbaton tabs` and pass an exact target ID." });
+  throw codedError("TAB_AMBIGUOUS", `Tab selector ${JSON.stringify(selector)} is ambiguous (${matches.length} matches)`, { exitCode: 2, hint: "Pass an exact target ID from `bugbaton tabs`.", details: { matches: matches.length } });
 }

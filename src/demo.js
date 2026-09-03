@@ -6,7 +6,7 @@ const HTML = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="icon" href="data:,">
-  <title>Chroma capture demo</title>
+  <title>BugBaton capture demo</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #0b1020; color: #eef2ff; }
     body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: radial-gradient(circle at top, #312e81 0, #0b1020 55%); }
@@ -24,7 +24,7 @@ const HTML = `<!doctype html>
 </head>
 <body>
   <main>
-    <p><code>chroma demo</code></p>
+    <p><code>bugbaton demo</code></p>
     <h1>Make a small browser bug, then keep the evidence.</h1>
     <p>Try these actions in order. Return to the terminal and press Enter when you are done.</p>
     <div class="steps">
@@ -57,7 +57,7 @@ document.querySelector("#console-error").addEventListener("click", () => {
 });
 document.querySelector("#note-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  status.textContent = "Submitted the note. Chroma stores its length, not its value.";
+  status.textContent = "Submitted the note. BugBaton stores its length, not its value.";
 });`;
 
 export const DEMO_EVIDENCE_REQUIREMENT = Object.freeze({

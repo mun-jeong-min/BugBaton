@@ -42,7 +42,7 @@ test('serves the deterministic app without external URLs', async () => {
   assert.match(response.headers.get('content-type'), /^text\/html;/);
 
   const body = await response.text();
-  assert.match(body, /<title>Chroma CDP fixture<\/title>/);
+  assert.match(body, /<title>BugBaton fixture<\/title>/);
   assert.match(body, /id="click-target"/);
   assert.doesNotMatch(body, /https?:\/\//);
 });

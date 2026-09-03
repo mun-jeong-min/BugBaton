@@ -1,27 +1,38 @@
-# Chroma CDP
+# BugBaton
 
-[![CI](https://github.com/mun-jeong-min/Chroma/actions/workflows/ci.yml/badge.svg)](https://github.com/mun-jeong-min/Chroma/actions/workflows/ci.yml)
+[![CI](https://github.com/mun-jeong-min/BugBaton/actions/workflows/ci.yml/badge.svg)](https://github.com/mun-jeong-min/BugBaton/actions/workflows/ci.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 22+](https://img.shields.io/badge/node-%3E%3D22-43853d.svg)](package.json)
 
-**Reproduce once. Close Chrome. Keep the evidence.**
+**Pass the bug, not the browser.**
 
 **Because the next person should not have to reproduce the same browser bug just
 to see what happened.**
 
-Chroma CDP is a zero-dependency local flight recorder for a browser bug you can
+BugBaton is a zero-dependency local flight recorder for a browser bug you can
 reproduce but have not automated yet. One command opens an isolated Chrome,
 records a value-free action trail, console errors, failed requests, page state,
-browser identity, and a screenshot, then writes ordinary JSON, Markdown, and PNG
-files and shuts the session down.
+browser identity, and a screenshot, then writes an ordinary JSON report,
+Markdown summary, and SHA-256-manifested PNG attachment before shutting the
+session down.
 
 No account. No cloud. No browser extension. No MCP server. No telemetry.
 
-![Chroma turns a browser reproduction into a durable evidence bundle](docs/demo-overview.svg)
+![BugBaton turns a browser reproduction into a durable evidence bundle](docs/demo-overview.svg)
 
 **[Open the real sample report](docs/example-report/README.md)** ·
 **[Inspect its versioned JSON](docs/example-report/report.json)** ·
 **[Verify its shutdown receipt](docs/example-report/capture-receipt.json)**
+
+The recipient can verify the saved evidence without Chrome or a running app:
+
+```sh
+bugbaton verify ./bugbaton-report-2026-09-02T12-59-56-058Z-6808
+```
+
+This checks the compatible report header, safe attachment paths, declared file
+sizes and SHA-256 hashes, and capture-receipt consistency. It does not prove who
+created the bundle; BugBaton reports that authenticity limit explicitly.
 
 ```text
 click button #7
@@ -37,21 +48,21 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#15c4ce0 -- chroma demo
+npm exec --yes --package=github:mun-jeong-min/BugBaton#15c4ce0 -- bugbaton demo
 ```
 
-Follow the three steps in the Chrome window, then press Enter. Chroma captures
+Follow the three steps in the Chrome window, then press Enter. BugBaton captures
 the report and safely closes only the browser process it launched and verified.
 If you end the demo before it records at least one action, browser error, and
 failed request, it returns `DEMO_EVIDENCE_INCOMPLETE` instead of claiming the
 demo succeeded. The incomplete report is retained and Chrome is still closed.
 
 ```console
-$ chroma demo
+$ bugbaton demo
 Demo ready at http://127.0.0.1:61990. Follow the three steps in Chrome.
 Capturing. Reproduce the bug in Chrome, then press Enter or Ctrl+C here.
 Demo complete
-Wrote report to ./chroma-report-2026-09-02T12-59-56-058Z-6808
+Wrote report to ./bugbaton-report-2026-09-02T12-59-56-058Z-6808
 3 errors, 1 failed request, 4 reproduction actions
 Chrome session stopped: yes
 ```
@@ -68,8 +79,8 @@ window. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#15c4ce0 -- \
-  chroma capture --url http://127.0.0.1:3000 \
+npm exec --yes --package=github:mun-jeong-min/BugBaton#15c4ce0 -- \
+  bugbaton capture --url http://127.0.0.1:3000 \
   --title "Checkout fails after Save" \
   --expected "The order is saved." \
   --actual "The request returns HTTP 503."
@@ -85,9 +96,9 @@ was expected, what happened, and then the browser evidence supporting it.
 ## Why this instead of another browser controller?
 
 > **Use Playwright to automate a known flow. Use DevTools or a browser MCP for
-> live investigation. Use Chroma when the evidence must outlive that session.**
+> live investigation. Use BugBaton when the evidence must outlive that session.**
 
-Chroma does not try to drive every browser workflow or find the root cause. It
+BugBaton does not try to drive every browser workflow or find the root cause. It
 freezes the gap between “I can make it break” and “I have an automated repro”
 into a bounded artifact that another person or tool can inspect without live
 browser access.
@@ -99,7 +110,7 @@ browser access.
 | A repeatable automated browser test | Playwright |
 | Open-ended live investigation | DevTools, BrowserTools MCP, or Chrome DevTools MCP |
 | Proof of an agent's completed change | ProofShot |
-| One human-found local bug that must survive and travel | **Chroma CDP** |
+| One human-found local bug that must survive and travel | **BugBaton** |
 
 The unusual work is evidence integrity rather than CDP transport: observation
 boundaries, browser and tab identity, redaction before persistence, bounded-loss
@@ -116,7 +127,7 @@ the safety contract.
 
 ```mermaid
 flowchart LR
-  Shell["human or coding agent"] --> CLI["chroma commands"]
+  Shell["human or coding agent"] --> CLI["bugbaton commands"]
   CLI -->|capture| Recorder["one-command reproduction"]
   CLI -->|one-shot CDP| Chrome["real Chrome page targets"]
   CLI -->|launch / connect| Session["browser-bound session"]
@@ -148,26 +159,26 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/Chroma#15c4ce0
-chroma --version
+npm install --global github:mun-jeong-min/BugBaton#15c4ce0
+bugbaton --version
 ```
 
 For development, install from a local clone:
 
 ```sh
-git clone https://github.com/mun-jeong-min/Chroma.git chroma
-cd chroma
+git clone https://github.com/mun-jeong-min/BugBaton.git bugbaton
+cd bugbaton
 npm link
-chroma --version
+bugbaton --version
 ```
 
 Or run without installing:
 
 ```sh
-node bin/chroma.js --help
+node bin/bugbaton.js --help
 ```
 
-The package name `chroma-cdp` is intended for the first npm release but is not
+The package name `bugbaton` is intended for the first npm release but is not
 published yet.
 
 ## Reuse a signed-in development profile
@@ -176,11 +187,11 @@ Some local bugs need authentication. Use a dedicated reusable profile instead
 of your everyday Chrome profile:
 
 ```sh
-chroma capture --profile "$HOME/.local/share/chroma/profiles/my-app" \
+bugbaton capture --profile "$HOME/.local/share/bugbaton/profiles/my-app" \
   --url http://127.0.0.1:3000
 ```
 
-Log in during the first capture and reuse the same path later. Chroma warns when
+Log in during the first capture and reuse the same path later. BugBaton warns when
 an explicit profile is used because pages can read and modify that profile; never
 point it at Chrome's default user-data directory.
 
@@ -191,10 +202,10 @@ agent needs to inspect or control each stage. Launch an isolated Chrome profile
 with CDP bound to loopback:
 
 ```sh
-chroma doctor
-chroma launch --url http://127.0.0.1:3000
-chroma tabs
-chroma snapshot
+bugbaton doctor
+bugbaton launch --url http://127.0.0.1:3000
+bugbaton tabs
+bugbaton snapshot
 ```
 
 The snapshot prints semantic references:
@@ -207,27 +218,27 @@ The snapshot prints semantic references:
 Use those references to minimally reproduce the issue:
 
 ```sh
-chroma fill @e2 "dev@example.test"
-chroma click @e1
-chroma errors
-chroma network --failed
-chroma screenshot --full-page --output page.png
-chroma report --output ./chroma-report
-chroma stop
+bugbaton fill @e2 "dev@example.test"
+bugbaton click @e1
+bugbaton errors
+bugbaton network --failed
+bugbaton screenshot --full-page --output page.png
+bugbaton report --output ./bugbaton-report
+bugbaton stop
 ```
 
 For values that should not appear in shell history or the process list, use
-`printf '%s' "$VALUE" | chroma fill @e2 --stdin`. Chroma removes one trailing
+`printf '%s' "$VALUE" | bugbaton fill @e2 --stdin`. BugBaton removes one trailing
 line ending and still records only the character count.
 
 To attach to a Chrome you started yourself:
 
 ```sh
-google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chroma-profile
-chroma connect http://127.0.0.1:9222
+google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/bugbaton-profile
+bugbaton connect http://127.0.0.1:9222
 ```
 
-Recent Chrome versions require a non-default `--user-data-dir` for remote debugging. `chroma launch` handles this automatically with an isolated profile.
+Recent Chrome versions require a non-default `--user-data-dir` for remote debugging. `bugbaton launch` handles this automatically with an isolated profile.
 
 ## Commands
 
@@ -238,7 +249,7 @@ Recent Chrome versions require a non-default `--user-data-dir` for remote debugg
 | `capture` | Launch, record a privacy-safe manual reproduction, report, and stop |
 | `launch` | Start isolated Chrome on loopback and begin observation |
 | `connect [ENDPOINT]` | Save and verify an existing endpoint, then begin observation |
-| `stop` | Stop observation and close only a verified Chroma-owned Chrome process |
+| `stop` | Stop observation and close only a verified BugBaton-owned Chrome process |
 | `tabs` | List page targets only |
 | `snapshot` | Accessibility snapshot with tab-bound `@eN` references |
 | `click` | Dispatch a CDP mouse click to a snapshot ref or explicit `--selector CSS` |
@@ -248,9 +259,10 @@ Recent Chrome versions require a non-default `--user-data-dir` for remote debugg
 | `network --failed` | Observed transport failures and HTTP 4xx/5xx responses |
 | `screenshot` | PNG capture, optionally `--full-page` |
 | `report` | Local `report.json`, concise `README.md`, and optional screenshot |
+| `verify REPORT_DIR` | Verify a saved bundle's structure, attachment integrity, and receipt without Chrome |
 | `version` | Cheap, read-only version probe |
 
-Run `chroma <command> --help` for exact arguments. Global options can follow the command options in any order:
+Run `bugbaton <command> --help` for exact arguments. Global options can follow the command options in any order:
 
 ```text
 --json
@@ -261,16 +273,16 @@ Run `chroma <command> --help` for exact arguments. Global options can follow the
 ```
 
 Use the standard `--` separator when a positional value starts with `-`, for
-example `chroma fill @e2 -- -draft`.
+example `bugbaton fill @e2 -- -draft`.
 
 `--tab` first tries an exact target ID, then a unique ID prefix, URL substring,
 or title substring. When multiple page tabs are open, diagnostics, page captures,
 and mutations require an explicit tab instead of risking disclosure or action in
 the wrong page. Snapshot refs are bound to browser instance, endpoint, target ID,
 URL fingerprint, and document loader; after browser replacement, navigation, or
-reload, Chroma refuses a stale ref and asks for a new snapshot.
+reload, BugBaton refuses a stale ref and asks for a new snapshot.
 
-For repeatable fixture/CI runs, `launch --deterministic` also disables Chrome background networking, component updates, default apps, and extensions. It is intentionally off in normal use so Chroma does not hide extension or service-worker behavior involved in a real bug.
+For repeatable fixture/CI runs, `launch --deterministic` also disables Chrome background networking, component updates, default apps, and extensions. It is intentionally off in normal use so BugBaton does not hide extension or service-worker behavior involved in a real bug.
 
 ## JSON for agents and scripts
 
@@ -297,7 +309,7 @@ Errors use the same envelope with `ok: false`, `data: null`, and stable `code`, 
 ## Observation model
 
 Chrome does not provide retroactive console or Network event history. After
-`capture`, `launch`, or `connect`, Chroma starts a detached local monitor that
+`capture`, `launch`, or `connect`, BugBaton starts a detached local monitor that
 attaches to current and newly opened page targets. `errors`, `network --failed`,
 and `report` read its append-only, target-tagged event log without consuming each
 other's evidence. `capture` additionally records manual click, input-length,
@@ -312,21 +324,21 @@ Every diagnostic result includes:
 
 `--clear` writes a scoped checkpoint for the selected tab and event family; it does not erase another tab's evidence.
 
-State defaults to `~/.local/state/chroma` and can be isolated with `CHROMA_STATE_DIR` or `--state-dir`. State files are owner-only and include the current connection, snapshot bindings, monitor metadata, and redacted JSONL observations. A new `launch`/`connect` creates a new session ID and observation window; an unexpected monitor restart in the same session is recorded as a discontinuity.
+State defaults to `~/.local/state/bugbaton` and can be isolated with `BUGBATON_STATE_DIR` or `--state-dir`. State files are owner-only and include the current connection, snapshot bindings, monitor metadata, and redacted JSONL observations. A new `launch`/`connect` creates a new session ID and observation window; an unexpected monitor restart in the same session is recorded as a discontinuity.
 
 ## Security boundary
 
-CDP is browser-level control. Anyone who can reach the endpoint may read page content, execute JavaScript and actions, and access authenticated pages. Chroma is not a sandbox.
+CDP is browser-level control. Anyone who can reach the endpoint may read page content, execute JavaScript and actions, and access authenticated pages. BugBaton is not a sandbox.
 
 - `launch` binds CDP to loopback and uses an isolated profile by default.
-- Non-loopback endpoints are refused unless that invocation includes `--allow-remote`; Chroma does not authenticate them.
+- Non-loopback endpoints are refused unless that invocation includes `--allow-remote`; BugBaton does not authenticate them.
 - Passing `--profile` may expose and modify authenticated browser state. Prefer the default isolated profile.
 - URL credentials, sensitive query values, Bearer/Basic credentials, and common token assignments are redacted before monitor persistence.
 - Request/response bodies, cookies, authorization headers, storage values, and `fill` text are not collected by default.
 - Manual action capture stores element category, control keys, and input length, never input text.
 - `--title`, `--expected`, and `--actual` are intentional report content; review them before sharing.
 - Screenshots, page titles, accessible names, and console prose can still contain sensitive information. Review every report before sharing.
-- Chroma does not upload reports, expose tunnels, send telemetry, bypass TLS warnings, or publish anything.
+- BugBaton does not upload reports, expose tunnels, send telemetry, bypass TLS warnings, or publish anything.
 
 ## Known limits
 
@@ -347,6 +359,9 @@ npm run test:e2e
 ```
 
 The fixture is a dependency-free local app with deterministic controls for click/fill/press, console error, uncaught exception, HTTP 503, and transport disconnect. The [verification plan](docs/verification-plan.md) defines the real-Chrome evidence required before release; [validation results](docs/validation.md) record the latest run.
+
+The [international launch scorecard](docs/launch-scorecard.md) keeps the
+release threshold and remaining distribution blocker visible.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the product boundary, test ladder,
 and evidence expected in a change.

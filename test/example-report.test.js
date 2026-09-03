@@ -41,6 +41,7 @@ test("committed example is a private, complete capture with verified shutdown", 
   assert.match(markdown, /Bundle status: \*\*complete\*\*/);
   assert.match(markdown, /Observation coverage: \*\*best effort\*\*/);
   assert.match(markdown, /## Bug claim[\s\S]*Expected:[\s\S]*Actual:/);
+  assert.match(markdown, /## Verify this bundle[\s\S]*does not prove who\s+created/i);
   assert.match(markdown, /HTTP 503/);
   assert.doesNotMatch(textualBundle, /sample message|\/Users\/|CAPTURE_INPUT/i);
   assert.deepEqual([...screenshot.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);

@@ -2,12 +2,12 @@
 
 - Status: Accepted for the MVP
 - Date: 2026-09-02
-- Decision owners: Chroma maintainers
+- Decision owners: BugBaton maintainers
 - Scope: Public CLI and safety contract; implementation details remain replaceable
 
 ## Context
 
-Chroma connects to a real Chrome instance over the Chrome DevTools Protocol
+BugBaton connects to a real Chrome instance over the Chrome DevTools Protocol
 (CDP) so a developer or coding agent can observe, diagnose, and make small,
 intentional changes to a local web application from a shell.
 
@@ -31,13 +31,13 @@ stable structured output, explicit failure classes, and no terminal-only behavio
 
 ## Decision
 
-The public product promise is: **Reproduce once. Close Chrome. Keep the
-evidence.** Chroma is a local flight recorder for a browser bug a developer can
+The public product promise is: **Pass the bug, not the browser.** BugBaton is a
+local flight recorder for a browser bug a developer can
 reproduce but has not automated. It preserves the reproduction as ordinary files
 that can move between a person, shell, issue, or agent.
 
-Chroma will be an opinionated, read-mostly incident-triage CLI for local web apps.
-Its public executable is `chroma`. It will expose a small set of task-level verbs,
+BugBaton will be an opinionated, read-mostly incident-triage CLI for local web apps.
+Its public executable is `bugbaton`. It will expose a small set of task-level verbs,
 not raw CDP domains, and every MVP command will support a stable `--json` mode.
 
 The primary workflow is:
@@ -60,7 +60,7 @@ are outside the MVP.
 
 ## Differentiation hypothesis
 
-Chroma will earn adoption if it is faster and safer than assembling equivalent
+BugBaton will earn adoption if it is faster and safer than assembling equivalent
 diagnostics from a broad automation API or a one-tool-per-CDP surface. The wedge is
 the complete `connect -> diagnose -> minimally reproduce -> report` loop, with one
 contract shared by a person, `jq`, CI, and a coding agent.
@@ -95,7 +95,7 @@ time-to-diagnosis and report usefulness against representative local-app failure
 The canonical form is:
 
 ```text
-chroma [--json] [--endpoint <url>] [--state-dir <path>] [--allow-remote]
+bugbaton [--json] [--endpoint <url>] [--state-dir <path>] [--allow-remote]
        [--verbose] <command> [...]
 ```
 
@@ -105,7 +105,7 @@ uses the form above.
 - `--json` changes serialization only. It must not change the work performed.
 - `--endpoint <url>` overrides the endpoint remembered by `launch` or `connect` for
   the current invocation.
-- `--state-dir <path>` overrides the local state directory; `CHROMA_STATE_DIR` is
+- `--state-dir <path>` overrides the local state directory; `BUGBATON_STATE_DIR` is
   the environment-variable equivalent.
 - `--allow-remote` permits an explicitly supplied non-loopback endpoint for this
   invocation and surfaces a strong warning. It is never persisted as blanket
@@ -115,7 +115,7 @@ uses the form above.
 - Commands that accept `--tab <match>` try an exact CDP target ID first. Otherwise
   they accept an ID prefix or a substring of URL/title only when it matches exactly
   one page target; zero or multiple matches fail.
-- If `--tab` is omitted and exactly one current `page` target exists, Chroma uses
+- If `--tab` is omitted and exactly one current `page` target exists, BugBaton uses
   it. When multiple page targets exist, diagnostics, captures, and mutations fail
   closed and require explicit selection. Extensions, workers, frames, and DevTools
   targets are never implicit candidates.
@@ -129,12 +129,12 @@ promise. Machine output and exit codes are the compatibility surface.
 ### `doctor`
 
 ```text
-chroma doctor [--chrome <path>] [--endpoint <http-url>]
+bugbaton doctor [--chrome <path>] [--endpoint <http-url>]
 ```
 
 Checks the local prerequisites needed by the other commands. At minimum it reports:
 
-- Chroma and supported runtime versions;
+- BugBaton and supported runtime versions;
 - Chrome executable discovery and detected Chrome version;
 - whether a proposed debugging endpoint is loopback, reachable, and speaks the
   expected discovery protocol;
@@ -151,7 +151,7 @@ before returning.
 ### `demo`
 
 ```text
-chroma demo [--output <directory>] [--duration <seconds>]
+bugbaton demo [--output <directory>] [--duration <seconds>]
             [--title <text>] [--expected <text>] [--actual <text>]
             [--chrome <path>] [--port <number>] [--profile <path>]
             [--headless] [--deterministic]
@@ -166,7 +166,7 @@ account, clone, or external service. Its report contract is identical to
 ### `capture`
 
 ```text
-chroma capture [--url <url>] [--output <directory>] [--duration <seconds>]
+bugbaton capture [--url <url>] [--output <directory>] [--duration <seconds>]
                [--title <text>] [--expected <text>] [--actual <text>]
                [--chrome <path>] [--port <number>] [--profile <path>]
                [--headless] [--deterministic]
@@ -175,7 +175,7 @@ chroma capture [--url <url>] [--output <directory>] [--duration <seconds>]
 `capture` is the first-use product path. It launches an isolated Chrome session,
 starts observation with manual action capture enabled, waits while the developer
 reproduces the bug, writes the same report contract as `report`, then stops the
-monitor and verified Chroma-owned Chrome process. Without `--duration`, Enter or
+monitor and verified BugBaton-owned Chrome process. Without `--duration`, Enter or
 Ctrl+C ends recording. Progress and the prompt stay on stderr so JSON stdout
 remains one document. When `--port` and `--output` are omitted, it chooses a free
 loopback CDP port and a unique report directory. A post-report
@@ -188,19 +188,19 @@ These actions are contextual breadcrumbs, not a replay script or proof of cause.
 ### `launch`
 
 ```text
-chroma launch [--chrome <path>] [--port <number>] [--profile <path>]
+bugbaton launch [--chrome <path>] [--port <number>] [--profile <path>]
               [--url <url>] [--headless]
 ```
 
 Starts a separate Chrome process with remote debugging bound to loopback, establishes
-a Chroma session, and prints the resulting session and endpoint. It must not modify
+a BugBaton session, and prints the resulting session and endpoint. It must not modify
 the flags of or terminate an already-running Chrome process.
 
-The default profile is a Chroma-managed isolated profile. `--profile` deliberately
+The default profile is a BugBaton-managed isolated profile. `--profile` deliberately
 permits an explicit alternative, including a personal Chrome profile, but launch
 output and reports carry a strong warning because authenticated state can be read or
 modified. The MVP has no arbitrary Chrome-flag passthrough, so callers cannot
-override Chroma-owned debugging address, port, or profile arguments indirectly.
+override BugBaton-owned debugging address, port, or profile arguments indirectly.
 
 Successful `launch` returns only after the discovery endpoint is reachable and the
 session monitor is ready. Process supervision is an implementation detail, but
@@ -212,7 +212,7 @@ it never kills an unverified PID from mutable state.
 ### `connect`
 
 ```text
-chroma connect [<http-url>] [--endpoint <http-url>] [--allow-remote]
+bugbaton connect [<http-url>] [--endpoint <http-url>] [--allow-remote]
 ```
 
 Attaches to an already-debuggable Chrome instance and records enough identity to
@@ -229,22 +229,22 @@ Successful `launch` and `connect` start a local session monitor. The monitor att
 to current and newly discovered page targets and appends relevant CDP events to a
 JSONL event log whose records carry the target ID. Observation for `errors`,
 `network`, and `report` begins
-when that monitor is ready, not before Chrome was launched or before Chroma attached.
-Chroma cannot promise events from before that observation window.
+when that monitor is ready, not before Chrome was launched or before BugBaton attached.
+BugBaton cannot promise events from before that observation window.
 
 Every affected result includes `observationStartedAt`, `monitorRunning`, and
 `bestEffort`. MVP event capture is always `bestEffort: true`: even a healthy monitor
 does not claim pre-attachment or gap-free browser history. A stopped, restarted,
 detached, or partially attached monitor adds an explicit completeness warning.
-Chroma never presents partial history as complete page history.
+BugBaton never presents partial history as complete page history.
 
 ### `stop`
 
 ```text
-chroma stop
+bugbaton stop
 ```
 
-`stop` ends the Chroma observation session. For `connect`, it stops observation
+`stop` ends the BugBaton observation session. For `connect`, it stops observation
 but leaves the externally owned browser running. For `launch` or `capture`, it
 closes Chrome only after the live endpoint matches the saved browser-instance
 identity. Evidence remains on disk for review. The command is idempotent and does
@@ -253,7 +253,7 @@ not create state when no session exists.
 ### `tabs`
 
 ```text
-chroma tabs
+bugbaton tabs
 ```
 
 Lists current `page` targets in deterministic CDP discovery order. Human output
@@ -273,7 +273,7 @@ valid target.
 ### `snapshot`
 
 ```text
-chroma snapshot [--tab <match>] [--all]
+bugbaton snapshot [--tab <match>] [--all]
 ```
 
 Captures a compact accessibility-oriented page tree suitable for inspection and
@@ -282,7 +282,7 @@ output favors role, accessible name, state, and value summaries over a DOM dump.
 JSON preserves hierarchy and structured properties.
 
 A reference is scoped to the connected browser, target ID, and URL that produced it.
-Chroma records this binding locally. Navigation to another URL, target closure,
+BugBaton records this binding locally. Navigation to another URL, target closure,
 reconnection to a different browser instance, or an unresolvable backend node makes
 the reference stale or unavailable. Mutating commands must refuse it; they must not
 re-find “something similar” and click it.
@@ -294,8 +294,8 @@ limit truncates either mode, truncation is explicit in human and JSON output.
 ### `click`
 
 ```text
-chroma click <@ref> [--tab <match>]
-chroma click --selector <css> [--tab <match>]
+bugbaton click <@ref> [--tab <match>]
+bugbaton click --selector <css> [--tab <match>]
 ```
 
 Resolves one exact target, scrolls it into view when necessary, performs one click,
@@ -308,9 +308,9 @@ should resolve to one element.
 ### `fill`
 
 ```text
-chroma fill <@ref> <value> [--tab <match>]
-chroma fill --selector <css> <value> [--tab <match>]
-chroma fill <@ref> --stdin [--tab <match>]
+bugbaton fill <@ref> <value> [--tab <match>]
+bugbaton fill --selector <css> <value> [--tab <match>]
+bugbaton fill <@ref> --stdin [--tab <match>]
 ```
 
 Replaces the current editable value and dispatches the normal input/change path.
@@ -325,7 +325,7 @@ or `report`. Results state only the supplied character count.
 ### `press`
 
 ```text
-chroma press [<@ref>] <key> [--tab <match>]
+bugbaton press [<@ref>] <key> [--tab <match>]
 ```
 
 Sends one documented key to the resolved element, or to the active page
@@ -336,11 +336,11 @@ JavaScript keyboard expressions and modifier chords are rejected.
 ### `errors`
 
 ```text
-chroma errors [--tab <match>] [--since <iso-time>] [--limit <n>] [--clear]
+bugbaton errors [--tab <match>] [--since <iso-time>] [--limit <n>] [--clear]
 ```
 
 Returns uncaught page exceptions, console errors, and CDP log entries observed by
-Chroma for the selected target. Records include timestamp, kind, message, source
+BugBaton for the selected target. Records include timestamp, kind, message, source
 location when known, occurrence count, and observation-window metadata. Repeated
 equivalent records may be grouped, but grouping and counts must be explicit.
 
@@ -352,11 +352,11 @@ clearing occurred. This separates “the query worked” from “the page is hea
 ### `network --failed`
 
 ```text
-chroma network --failed [--tab <match>] [--since <iso-time>] [--limit <n>]
+bugbaton network --failed [--tab <match>] [--since <iso-time>] [--limit <n>]
                         [--clear]
 ```
 
-Returns requests observed by Chroma that failed at the transport layer or completed
+Returns requests observed by BugBaton that failed at the transport layer or completed
 with an unsuccessful HTTP status according to the documented status policy. Each
 record includes method, sanitized URL, status or CDP failure reason, resource type,
 duration when known, initiator summary when known, and timestamp.
@@ -368,12 +368,12 @@ are not emitted by default. The JSON result distinguishes `transport`, `http`, a
 ### `screenshot`
 
 ```text
-chroma screenshot [--output <png-path>] [--full-page] [--tab <match>]
+bugbaton screenshot [--output <png-path>] [--full-page] [--tab <match>]
 ```
 
 Captures the viewport by default or the full page when requested. The image is
 always written to a file; stdout contains only a human summary or the JSON envelope,
-never binary PNG bytes. If `--output` is omitted, Chroma chooses a collision-safe
+never binary PNG bytes. If `--output` is omitted, BugBaton chooses a collision-safe
 path in the current directory and reports it. Existing explicit paths and symlinks
 are refused so a diagnostic capture cannot silently replace another artifact.
 
@@ -383,13 +383,13 @@ was requested. It warns that screenshots can contain sensitive page content.
 ### `report`
 
 ```text
-chroma report [--output <directory>] [--no-screenshot] [--tab <match>]
+bugbaton report [--output <directory>] [--no-screenshot] [--tab <match>]
               [--title <text>] [--expected <text>] [--actual <text>]
 ```
 
 Produces one bounded diagnostic evidence packet for the selected page. It contains:
 
-- Chroma, Chrome, platform, connection mode, and relevant launch facts;
+- BugBaton, Chrome, platform, connection mode, and relevant launch facts;
 - an optional bounded bug claim stating title, expected result, and actual result;
 - target ID, title, sanitized URL, and observation window;
 - a snapshot or an explicit reason it could not be captured;
@@ -399,16 +399,16 @@ Produces one bounded diagnostic evidence packet for the selected page. It contai
 
 `report` always writes a local bundle directory containing a machine-readable
 `report.json`, a concise `README.md`, and, by default, `screenshot.png`. Without
-`--output`, Chroma chooses a collision-safe timestamped directory. Stdout contains
+`--output`, BugBaton chooses a collision-safe timestamped directory. Stdout contains
 only the artifact path and summary, or the standard envelope in JSON mode.
 
 Claim fields are explicit user-authored report content, capped before any browser
 is launched, sanitized for terminal/Markdown control characters, and persisted
 in both JSON and Markdown. They are not inferred from temporal evidence and are
-never presented as Chroma's diagnosis.
+never presented as BugBaton's diagnosis.
 
 `report.json` is the bundle manifest as well as its structured evidence. It records
-schema, Chroma/Chrome/protocol identity, target identity, observation cursor/window,
+schema, BugBaton/Chrome/protocol identity, target identity, observation cursor/window,
 monitor completeness, redaction policy, section provenance, and a typed reason for
 every missing or partial section. This is the evidence-packet distinction: the
 sections describe one collection boundary rather than an untraceable concatenation
@@ -449,7 +449,7 @@ Failure envelope:
     "code": "STALE_REFERENCE",
     "message": "Reference @e3 belongs to a previous document.",
     "retryable": true,
-    "hint": "Run `chroma snapshot` and use a new reference.",
+    "hint": "Run `bugbaton snapshot` and use a new reference.",
     "details": {}
   }
 }
@@ -512,12 +512,12 @@ before a new public exit code is considered.
 
 `launch` and `connect` replace the single current local session record and start or
 reuse its local monitor. State lives under the platform state directory (for example
-`$XDG_STATE_HOME/chroma` when set) and can be relocated with a documented
-Chroma-specific option or environment variable.
+`$XDG_STATE_HOME/bugbaton` when set) and can be relocated with a documented
+BugBaton-specific option or environment variable.
 
 Session records include only what is needed to reconnect and reject mistaken reuse:
 endpoint, browser identity, connection mode, relevant launch facts, process identity
-when Chroma launched it, and snapshot bindings. Files are created owner-only (0600)
+when BugBaton launched it, and snapshot bindings. Files are created owner-only (0600)
 inside owner-only directories (0700), written atomically, and safe under concurrent
 readers.
 
@@ -540,32 +540,32 @@ corrupt, or discontinuous log results in `bestEffort`, not a complete-looking qu
 
 CDP access is effectively browser control. A party that can reach the endpoint can
 read page content, execute page actions, access authenticated applications, and in
-some configurations affect browser data. Chroma is not a sandbox and does not make
+some configurations affect browser data. BugBaton is not a sandbox and does not make
 an untrusted endpoint safe.
 
 Therefore:
 
-- Chroma-launched debugging endpoints bind to loopback only. Chroma never exposes,
+- BugBaton-launched debugging endpoints bind to loopback only. BugBaton never exposes,
   tunnels, uploads, or publishes an endpoint.
 - Remote connections are refused by default and require an explicit per-invocation
-  acknowledgement. Chroma does not treat a remote endpoint as authenticated merely
+  acknowledgement. BugBaton does not treat a remote endpoint as authenticated merely
   because it answered the discovery request.
 - Launch uses an isolated profile by default. An explicit `--profile` may point at a
   personal profile, which can expose authenticated sessions and modify browsing
-  state; Chroma emits a strong warning but cannot make that use safe.
-- No telemetry, cloud upload, or external network request is performed by Chroma
+  state; BugBaton emits a strong warning but cannot make that use safe.
+- No telemetry, cloud upload, or external network request is performed by BugBaton
   beyond requests needed to the endpoint explicitly in scope.
 - URLs are sanitized for credentials and sensitive query values in errors, reports,
   and diagnostics. Cookies, authorization/proxy-authorization headers, request and
   response bodies, storage values, and `fill` contents are excluded by default.
-- Screenshots and accessible names can still reveal secrets. Chroma warns at capture
+- Screenshots and accessible names can still reveal secrets. BugBaton warns at capture
   and report boundaries; users remain responsible for reviewing artifacts before
   sharing them.
-- Output paths come only from the caller or Chroma's collision-safe default; page
+- Output paths come only from the caller or BugBaton's collision-safe default; page
   content never chooses a local path. Existing output paths and symlinks are refused.
 - Page content is untrusted data. It is never interpreted as a shell command, CLI
   option, local path, or permission grant.
-- Chroma does not bypass TLS warnings, browser security interstitials, same-origin
+- BugBaton does not bypass TLS warnings, browser security interstitials, same-origin
   policy, or OS protections by default.
 
 ## Fixed decisions
@@ -584,7 +584,7 @@ Therefore:
 - `capture` is the one-command first-use loop, records value-free manual action
   breadcrumbs, produces a report, and invokes ownership-safe shutdown.
 - `stop` removes the current session, lets its matching monitor exit, and closes
-  only a browser whose endpoint identity proves Chroma ownership.
+  only a browser whose endpoint identity proves BugBaton ownership.
 - One current session record is the MVP state model; a new `launch` or `connect`
   replaces it.
 - Read-focused diagnosis and bounded evidence reports, not broad automation, define
@@ -628,7 +628,7 @@ high-water boundary. Future changes must preserve those tested answers.
 
 - Replacing Playwright, Puppeteer, Selenium, Chrome DevTools, or their test runners.
 - Providing a raw one-to-one CLI for every CDP domain or method.
-- Promising access to console/network history from before Chroma began observing.
+- Promising access to console/network history from before BugBaton began observing.
 - Silently launching Chrome when a session is missing.
 - Attaching to arbitrary LAN/public endpoints or a personal Chrome profile by
   default. Explicit `--allow-remote` or `--profile` use remains operator risk.
@@ -654,6 +654,7 @@ high-water boundary. Future changes must preserve those tested answers.
 | A visitor can prove the loop without an existing app. | **integration + real-browser smoke:** run `demo`; verify the packaged page serves only on loopback, exposes one intentional HTTP 503, produces a normal capture bundle, and shuts down its temporary server, monitor, and browser. |
 | Unsafe remote attachment is fail-closed. | **integration:** try a non-loopback endpoint without `--allow-remote`; assert no connection and exit 2. Verify explicit remote/personal-profile use carries warnings in output/report. |
 | Screenshot/report file behavior is automation-safe. | **integration:** verify explicit/default paths, manifest file list, JSON metadata, and no binary/progress bytes on stdout. |
+| A recipient can check a bundle after the browser session is gone. | **integration + e2e:** run `verify` without Chrome, accept unchanged capture/demo reports, reject tampering, unsafe paths, and symlinks, and keep the no-authenticity boundary explicit. |
 | Human output remains usable in pipelines. | **integration:** run commands with non-TTY stdout and `NO_COLOR`; assert bounded plain output, no cursor control, and quiet broken-pipe handling. |
 
 Tripwires that disprove the differentiation hypothesis:
@@ -710,7 +711,7 @@ evidence of those gaps.
 
 The small public surface should be learnable and scriptable, and it gives tests a
 clear contract. It also means some powerful CDP capabilities remain intentionally
-inaccessible. Chroma must maintain schemas and exit semantics with more care than a
+inaccessible. BugBaton must maintain schemas and exit semantics with more care than a
 human-only debugging script, and historical diagnostics require a long-lived local
 monitor plus sensitive local event storage. Safe defaults add explicit friction to
 remote and personal-profile workflows; that friction is intentional.

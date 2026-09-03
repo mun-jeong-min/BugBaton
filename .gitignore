@@ -1,6 +1,6 @@
 node_modules/
 .e2e-artifacts/
 .e2e-state/
-chroma-*.png
-chroma-report-*/
+bugbaton-*.png
+bugbaton-report-*/
 *.staging-*/

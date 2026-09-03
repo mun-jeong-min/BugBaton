@@ -7,7 +7,7 @@ import { readEventLog, readEvents } from "../src/operations.js";
 import { sessionPaths } from "../src/state.js";
 
 test("clear markers affect only the selected target and event kinds", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "chroma-events-test-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "bugbaton-events-test-"));
   const paths = sessionPaths(root);
   const rows = [
     { kind: "error", targetId: "a", message: "old a", observedAt: "2026-01-01T00:00:00Z" },
@@ -22,14 +22,14 @@ test("clear markers affect only the selected target and event kinds", async () =
 });
 
 test("event-log corruption and read failure are visible in its cursor", async () => {
-  const corruptRoot = await mkdtemp(path.join(os.tmpdir(), "chroma-events-corrupt-"));
+  const corruptRoot = await mkdtemp(path.join(os.tmpdir(), "bugbaton-events-corrupt-"));
   const corruptPaths = sessionPaths(corruptRoot);
   await appendFile(corruptPaths.events, `${JSON.stringify({ kind: "error", observedAt: "2026-01-01T00:00:00Z" })}\nnot-json\n`);
   const corrupt = await readEventLog(corruptPaths);
   assert.equal(corrupt.records.length, 1);
   assert.equal(corrupt.cursor.corruptLines, 1);
 
-  const failedRoot = await mkdtemp(path.join(os.tmpdir(), "chroma-events-failed-"));
+  const failedRoot = await mkdtemp(path.join(os.tmpdir(), "bugbaton-events-failed-"));
   const failedPaths = sessionPaths(failedRoot);
   await mkdir(failedPaths.events);
   const failed = await readEventLog(failedPaths);

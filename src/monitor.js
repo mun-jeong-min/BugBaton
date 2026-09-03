@@ -19,12 +19,12 @@ const targets = {};
 let stopping = false;
 let eventWriteQueue = Promise.resolve();
 let stateWriteQueue = Promise.resolve();
-const configuredMaxBytes = Number(process.env.CHROMA_EVENT_MAX_BYTES ?? 5 * 1024 * 1024);
+const configuredMaxBytes = Number(process.env.BUGBATON_EVENT_MAX_BYTES ?? 5 * 1024 * 1024);
 const maxEventBytes = Number.isFinite(configuredMaxBytes) && configuredMaxBytes >= 64 * 1024 ? configuredMaxBytes : 5 * 1024 * 1024;
-const ACTION_BINDING = "__chromaRecordAction";
+const ACTION_BINDING = "__bugbatonRecordAction";
 const ACTION_SCRIPT = `(() => {
-  if (globalThis.__chromaRecorderInstalled) return;
-  globalThis.__chromaRecorderInstalled = true;
+  if (globalThis.__bugbatonRecorderInstalled) return;
+  globalThis.__bugbatonRecorderInstalled = true;
   const targetFacts = (target) => {
     const element = target?.closest?.("button,a,input,textarea,select,[role]") ?? target;
     const interactive = [...document.querySelectorAll("button,a,input,textarea,select,[role]")];
@@ -37,7 +37,7 @@ const ACTION_SCRIPT = `(() => {
     };
   };
   const send = (action, target, details = {}) => {
-    if (Date.now() < (globalThis.__chromaSuppressActionUntil ?? 0)) return;
+    if (Date.now() < (globalThis.__bugbatonSuppressActionUntil ?? 0)) return;
     const binding = globalThis.${ACTION_BINDING};
     if (typeof binding !== "function") return;
     binding(JSON.stringify({ action, target: targetFacts(target), ...details }));
@@ -256,7 +256,7 @@ async function poll() {
     if (latestSession.sessionId !== session.sessionId || latestSession.endpoint !== session.endpoint || latestSession.browserInstanceId !== session.browserInstanceId) process.exit(0);
     const liveVersion = await browserVersion(session.endpoint);
     if (session.browserInstanceId && browserInstanceId(liveVersion) !== session.browserInstanceId) {
-      await record({ kind: "monitor-discontinuity", code: "BROWSER_INSTANCE_CHANGED", message: "The browser process at the endpoint changed; run chroma connect again." });
+      await record({ kind: "monitor-discontinuity", code: "BROWSER_INSTANCE_CHANGED", message: "The browser process at the endpoint changed; run bugbaton connect again." });
       process.exit(0);
     }
     const tabs = await listTabs(session.endpoint);

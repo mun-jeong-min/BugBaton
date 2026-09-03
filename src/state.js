@@ -5,7 +5,7 @@ import path from "node:path";
 import { codedError } from "./errors.js";
 
 export function stateRoot(override) {
-  return path.resolve(override ?? process.env.CHROMA_STATE_DIR ?? path.join(os.homedir(), ".local", "state", "chroma"));
+  return path.resolve(override ?? process.env.BUGBATON_STATE_DIR ?? path.join(os.homedir(), ".local", "state", "bugbaton"));
 }
 
 export function sessionPaths(root) {
@@ -27,7 +27,7 @@ export async function readJson(file, fallback = null) {
     if (error.code === "ENOENT") return fallback;
     if (error instanceof SyntaxError) {
       throw codedError("STATE_INVALID_JSON", `State file is not valid JSON: ${file}`, {
-        hint: "Run `chroma doctor`; inspect or move the named state file, then reconnect to Chrome.",
+        hint: "Run `bugbaton doctor`; inspect or move the named state file, then reconnect to Chrome.",
         details: { path: file },
       });
     }

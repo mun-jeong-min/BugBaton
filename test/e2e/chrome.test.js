@@ -11,19 +11,18 @@ import { fileURLToPath } from "node:url";
 import { withCdp } from "../../src/cdp.js";
 import { listTabs } from "../../src/chrome.js";
 
-const RUN_REAL_CHROME = process.env.CHROMA_E2E === "1";
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
-const CLI = fileURLToPath(new URL("../../bin/chroma.js", import.meta.url));
+const CLI = fileURLToPath(new URL("../../bin/bugbaton.js", import.meta.url));
 const FIXTURE_SERVER = fileURLToPath(new URL("../fixtures/server.mjs", import.meta.url));
 const MONITOR = fileURLToPath(new URL("../../src/monitor.js", import.meta.url));
-const TRACE_TIMING = process.env.CHROMA_E2E_TIMING === "1";
+const TRACE_TIMING = process.env.BUGBATON_E2E_TIMING === "1";
 
 function traceTiming(label, startedAt) {
   if (TRACE_TIMING) process.stderr.write(`[e2e timing] ${label}: ${Date.now() - startedAt}ms\n`);
 }
 
 function processLabel(executable, args) {
-  const commands = new Set(["doctor", "demo", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]);
+  const commands = new Set(["doctor", "demo", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "verify", "version"]);
   return `${executable} ${args.find((argument) => commands.has(argument)) ?? args[0] ?? ""}`;
 }
 
@@ -86,7 +85,7 @@ async function startFixture() {
       });
     });
 
-    assert.equal(ready.fixture, "chroma-cdp");
+    assert.equal(ready.fixture, "bugbaton");
     return { child, url: ready.url, stderr: () => stderr };
   } catch (error) {
     await stopFixture({ child });
@@ -140,21 +139,21 @@ function commandName(args) {
 }
 
 function createCli(stateDir) {
-  return async function chroma(args, { timeout = 20_000, input = "" } = {}) {
+  return async function bugbaton(args, { timeout = 20_000, input = "" } = {}) {
     const command = commandName(args);
     const invocation = [CLI, "--state-dir", stateDir, "--json", ...args];
     const result = await runProcess(process.execPath, invocation, { timeout, input });
     assert.equal(
       result.code,
       0,
-      `chroma ${args.join(" ")} failed (signal=${result.signal})\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      `bugbaton ${args.join(" ")} failed (signal=${result.signal})\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
     );
     assert.ok(result.stdout.endsWith("\n"), "JSON stdout must end with one newline");
     let envelope;
     try {
       envelope = JSON.parse(result.stdout);
     } catch (error) {
-      assert.fail(`chroma ${command} emitted non-JSON stdout: ${error.message}\n${result.stdout}`);
+      assert.fail(`bugbaton ${command} emitted non-JSON stdout: ${error.message}\n${result.stdout}`);
     }
     assert.deepEqual(
       { schemaVersion: envelope.schemaVersion, ok: envelope.ok, command: envelope.command, error: envelope.error },
@@ -169,7 +168,7 @@ async function expectCliFailure(stateDir, args, { code, exitCode, retryable = fa
   const command = commandName(args);
   const invocation = [CLI, "--state-dir", stateDir, "--json", ...args];
   const result = await runProcess(process.execPath, invocation);
-  assert.equal(result.code, exitCode, `unexpected exit for chroma ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
+  assert.equal(result.code, exitCode, `unexpected exit for bugbaton ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
   if (!TRACE_TIMING) assert.equal(result.stderr, "", "JSON failures must keep stderr quiet unless verbose progress was requested");
   assert.ok(result.stdout.endsWith("\n"), "JSON failure stdout must end with one newline");
   const envelope = JSON.parse(result.stdout);
@@ -186,7 +185,7 @@ async function expectCliFailure(stateDir, args, { code, exitCode, retryable = fa
 
 async function runHumanCli(stateDir, args) {
   const result = await runProcess(process.execPath, [CLI, "--state-dir", stateDir, ...args]);
-  assert.equal(result.code, 0, `human-mode chroma ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`);
+  assert.equal(result.code, 0, `human-mode bugbaton ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`);
   assert.ok(result.stdout.endsWith("\n"));
   assert.doesNotMatch(result.stdout, /\u001b\[/, "human output should remain plain without ANSI control codes");
   return result;
@@ -250,7 +249,7 @@ function assertRedactedFixtureUrl(value, fixtureUrl) {
   assert.equal(actual.pathname, "/");
   assert.equal(actual.searchParams.get("token"), "[redacted]");
   assert.equal(actual.searchParams.get("view"), "compact");
-  assert.doesNotMatch(value, /CHROMA_E2E_SECRET/);
+  assert.doesNotMatch(value, /BUGBATON_E2E_SECRET/);
 }
 
 function assertEventCursor(cursor) {
@@ -291,7 +290,7 @@ async function assertStateHasNoMarker(stateDir, marker) {
   const files = await textFilesUnder(stateDir);
   assert.ok(files.length > 0, "state directory should contain persisted metadata");
   for (const file of files) {
-    assert.equal(file.mode & 0o077, 0, `${file.path} must be owner-only`);
+    if (process.platform !== "win32") assert.equal(file.mode & 0o077, 0, `${file.path} must be owner-only`);
     assert.equal(file.text.includes(marker), false, `${file.path} must not persist the secret marker`);
   }
   return files;
@@ -362,23 +361,22 @@ async function discoverOwnedProcessGroups(stateDir, profileDir) {
 }
 
 test("real Chrome completes the diagnosis and report workflow", {
-  skip: RUN_REAL_CHROME ? false : "set CHROMA_E2E=1 to run the real-Chrome lane",
   timeout: 120_000,
 }, async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "chroma-real-e2e-"));
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "bugbaton-real-e2e-"));
   const stateDir = join(temporaryRoot, "state");
   const profileDir = join(temporaryRoot, "chrome-profile");
   const artifactsDir = join(temporaryRoot, "artifacts");
   const screenshotPath = join(artifactsDir, "fixture.png");
   const reportPath = join(artifactsDir, "report");
-  const querySecret = "CHROMA_E2E_SECRET";
-  const fillSecret = "CHROMA_E2E_FILL_SECRET";
-  const chroma = createCli(stateDir);
+  const querySecret = "BUGBATON_E2E_SECRET";
+  const fillSecret = "BUGBATON_E2E_FILL_SECRET";
+  const bugbaton = createCli(stateDir);
   let fixture;
   let chromePid;
   let monitorPid;
-  const previousEventMaxBytes = process.env.CHROMA_EVENT_MAX_BYTES;
-  process.env.CHROMA_EVENT_MAX_BYTES = String(64 * 1024);
+  const previousEventMaxBytes = process.env.BUGBATON_EVENT_MAX_BYTES;
+  process.env.BUGBATON_EVENT_MAX_BYTES = String(64 * 1024);
 
   try {
     fixture = await startFixture();
@@ -397,7 +395,7 @@ test("real Chrome completes the diagnosis and report workflow", {
       "--deterministic",
     ];
     if (process.env.CHROME_PATH) launchArgs.push("--chrome", process.env.CHROME_PATH);
-    const launched = await chroma(launchArgs, { timeout: 30_000 });
+    const launched = await bugbaton(launchArgs, { timeout: 30_000 });
     chromePid = launched.chromePid;
     monitorPid = launched.monitor.pid;
     assert.equal(launched.endpoint, `http://127.0.0.1:${cdpPort}`);
@@ -405,16 +403,20 @@ test("real Chrome completes the diagnosis and report workflow", {
     assert.ok(Number.isInteger(chromePid) && chromePid > 1);
     assert.ok(Number.isInteger(monitorPid) && monitorPid > 1);
 
-    await chmod(join(stateDir, "events.jsonl"), 0o644);
-    await chmod(join(stateDir, "actions.jsonl"), 0o644);
+    if (process.platform !== "win32") {
+      await chmod(join(stateDir, "events.jsonl"), 0o644);
+      await chmod(join(stateDir, "actions.jsonl"), 0o644);
+    }
 
-    const connected = await chroma(["connect", launched.endpoint]);
+    const connected = await bugbaton(["connect", launched.endpoint]);
     assert.equal(connected.endpoint, launched.endpoint);
     assert.equal(connected.source, "connect");
     assert.notEqual(connected.sessionId, launched.sessionId, "connect must begin a new observation window");
     monitorPid = connected.monitor.pid;
-    assert.equal((await stat(join(stateDir, "events.jsonl"))).mode & 0o077, 0);
-    assert.equal((await stat(join(stateDir, "actions.jsonl"))).mode & 0o077, 0);
+    if (process.platform !== "win32") {
+      assert.equal((await stat(join(stateDir, "events.jsonl"))).mode & 0o077, 0);
+      assert.equal((await stat(join(stateDir, "actions.jsonl"))).mode & 0o077, 0);
+    }
 
     const occupiedPort = await expectCliFailure(stateDir, [
       "launch",
@@ -424,8 +426,11 @@ test("real Chrome completes the diagnosis and report workflow", {
     ], { code: "PORT_IN_USE", exitCode: 2 });
     assert.equal(occupiedPort.details.endpoint, launched.endpoint);
 
-    const diagnosis = await chroma(["doctor"]);
+    const diagnosis = await bugbaton(["doctor"]);
     assert.equal(diagnosis.status, "ready");
+    if (process.platform === "win32") {
+      assert.equal(diagnosis.checks.find((check) => check.id === "state").observed.permissionModel, "platform-acl-not-inspected");
+    }
     const expectedCheckIds = [
       "runtime",
       "chrome_binary",
@@ -448,25 +453,25 @@ test("real Chrome completes the diagnosis and report workflow", {
 
     const tabs = await poll(
       "fixture page target",
-      () => chroma(["tabs"]),
-      (value) => value.tabs.some((tab) => tab.title === "Chroma CDP fixture"),
+      () => bugbaton(["tabs"]),
+      (value) => value.tabs.some((tab) => tab.title === "BugBaton fixture"),
     );
     assert.ok(tabs.tabs.every((tab) => tab.type === "page"), "tabs must omit non-page CDP targets");
-    const fixtureTab = tabs.tabs.find((tab) => tab.title === "Chroma CDP fixture");
-    assert.equal(fixtureTab.title, "Chroma CDP fixture");
+    const fixtureTab = tabs.tabs.find((tab) => tab.title === "BugBaton fixture");
+    assert.equal(fixtureTab.title, "BugBaton fixture");
     assertRedactedFixtureUrl(fixtureTab.url, fixture.url);
     const tabId = fixtureTab.id;
 
     const humanTabs = await runHumanCli(stateDir, ["tabs"]);
-    assert.match(humanTabs.stdout, /Chroma CDP fixture/);
+    assert.match(humanTabs.stdout, /BugBaton fixture/);
     assert.match(humanTabs.stdout, /token=%5Bredacted%5D/);
-    assert.doesNotMatch(humanTabs.stdout, /CHROMA_E2E_SECRET/);
+    assert.doesNotMatch(humanTabs.stdout, /BUGBATON_E2E_SECRET/);
 
     await waitForMonitorTarget(stateDir, tabId);
 
-    let snapshot = await chroma(["snapshot", "--tab", tabId]);
+    let snapshot = await bugbaton(["snapshot", "--tab", tabId]);
     assert.equal(snapshot.targetId, tabId);
-    assert.equal(snapshot.title, "Chroma CDP fixture");
+    assert.equal(snapshot.title, "BugBaton fixture");
     assertRedactedFixtureUrl(snapshot.url, fixture.url);
     const preNavigationRef = referenceFor(snapshot, "Increment counter", "button");
 
@@ -482,7 +487,7 @@ test("real Chrome completes the diagnosis and report workflow", {
       { code: "ELEMENT_NOT_FILLABLE", exitCode: 1 },
     );
 
-    await chroma(["click", "--selector", "a[href='#details']", "--tab", tabId]);
+    await bugbaton(["click", "--selector", "a[href='#details']", "--tab", tabId]);
     await delay(100);
     const staleRef = await expectCliFailure(
       stateDir,
@@ -490,14 +495,14 @@ test("real Chrome completes the diagnosis and report workflow", {
       { code: "STALE_SNAPSHOT", exitCode: 1 },
     );
     assert.match(staleRef.hint, /snapshot/);
-    snapshot = await chroma(["snapshot", "--tab", tabId]);
+    snapshot = await bugbaton(["snapshot", "--tab", tabId]);
     let incrementRef = referenceFor(snapshot, "Increment counter", "button");
     const reloadRef = referenceFor(snapshot, "Reload same URL", "button");
-    await chroma(["click", reloadRef, "--tab", tabId]);
+    await bugbaton(["click", reloadRef, "--tab", tabId]);
     await delay(300);
     await expectCliFailure(stateDir, ["click", incrementRef, "--tab", tabId], { code: "STALE_SNAPSHOT", exitCode: 1 });
 
-    snapshot = await chroma(["snapshot", "--tab", tabId]);
+    snapshot = await bugbaton(["snapshot", "--tab", tabId]);
     incrementRef = referenceFor(snapshot, "Increment counter", "button");
     let coverRef = referenceFor(snapshot, "Cover increment button", "button");
     const snapshotEntries = await readdir(join(stateDir, "snapshots"));
@@ -507,47 +512,47 @@ test("real Chrome completes the diagnosis and report workflow", {
     await writeFile(bindingPath, `${JSON.stringify({ ...binding, browserInstanceId: "different-browser-instance" }, null, 2)}\n`, { mode: 0o600 });
     await expectCliFailure(stateDir, ["click", incrementRef, "--tab", tabId], { code: "STALE_SNAPSHOT", exitCode: 1 });
 
-    snapshot = await chroma(["snapshot", "--tab", tabId]);
+    snapshot = await bugbaton(["snapshot", "--tab", tabId]);
     incrementRef = referenceFor(snapshot, "Increment counter", "button");
     coverRef = referenceFor(snapshot, "Cover increment button", "button");
-    await chroma(["click", coverRef, "--tab", tabId]);
+    await bugbaton(["click", coverRef, "--tab", tabId]);
     await expectCliFailure(stateDir, ["click", incrementRef, "--tab", tabId], { code: "ELEMENT_OBSCURED", exitCode: 1, retryable: true });
-    await chroma(["click", "--selector", "#click-overlay", "--tab", tabId]);
+    await bugbaton(["click", "--selector", "#click-overlay", "--tab", tabId]);
 
-    const clicked = await chroma(["click", incrementRef, "--tab", tabId]);
+    const clicked = await bugbaton(["click", incrementRef, "--tab", tabId]);
     assert.equal(clicked.action, "click");
     assert.equal(clicked.ref, incrementRef);
     assert.equal(clicked.inputMode, "cdp-mouse");
 
-    snapshot = await chroma(["snapshot", "--all", "--tab", tabId]);
+    snapshot = await bugbaton(["snapshot", "--all", "--tab", tabId]);
     assert.ok(snapshot.nodes.some((node) => node.name === "Counter incremented to 1"));
     const messageRef = referenceFor(snapshot, "Message", "textbox");
 
-    const secretFilled = await chroma(["fill", messageRef, "--stdin", "--tab", tabId], { input: `${fillSecret}\n` });
+    const secretFilled = await bugbaton(["fill", messageRef, "--stdin", "--tab", tabId], { input: `${fillSecret}\n` });
     assert.equal(secretFilled.textLength, fillSecret.length);
     assert.equal(Object.hasOwn(secretFilled, "text"), false, "fill output must not echo the secret value");
-    snapshot = await chroma(["snapshot", "--all", "--tab", tabId]);
+    snapshot = await bugbaton(["snapshot", "--all", "--tab", tabId]);
     assertRedactedFixtureUrl(snapshot.url, fixture.url);
     const secretTextbox = snapshot.nodes.find((node) => node.name === "Message" && node.role === "textbox");
     assert.equal(secretTextbox.value, "[redacted]");
     await assertStateHasNoMarker(stateDir, fillSecret);
 
     const refreshedMessageRef = referenceFor(snapshot, "Message", "textbox");
-    const dashFilled = await chroma(["fill", refreshedMessageRef, "--tab", tabId, "--", "-draft"]);
+    const dashFilled = await bugbaton(["fill", refreshedMessageRef, "--tab", tabId, "--", "-draft"]);
     assert.equal(dashFilled.textLength, "-draft".length);
-    const filled = await chroma(["fill", refreshedMessageRef, "hello chroma", "--tab", tabId]);
+    const filled = await bugbaton(["fill", refreshedMessageRef, "hello bugbaton", "--tab", tabId]);
     assert.equal(filled.action, "fill");
-    assert.equal(filled.textLength, "hello chroma".length);
+    assert.equal(filled.textLength, "hello bugbaton".length);
     assert.equal(Object.hasOwn(filled, "text"), false, "fill output must not echo the value");
 
-    const pressed = await chroma(["press", refreshedMessageRef, "Enter", "--tab", tabId]);
+    const pressed = await bugbaton(["press", refreshedMessageRef, "Enter", "--tab", tabId]);
     assert.equal(pressed.action, "press");
     assert.equal(pressed.key, "Enter");
 
     snapshot = await poll(
       "submitted form accessibility state",
-      () => chroma(["snapshot", "--all", "--tab", tabId]),
-      (value) => value.nodes.some((node) => node.name === "Submitted: hello chroma"),
+      () => bugbaton(["snapshot", "--all", "--tab", tabId]),
+      (value) => value.nodes.some((node) => node.name === "Submitted: hello bugbaton"),
     );
     const consoleErrorRef = referenceFor(snapshot, "Log console error", "button");
     const runtimeErrorRef = referenceFor(snapshot, "Throw runtime error", "button");
@@ -555,12 +560,12 @@ test("real Chrome completes the diagnosis and report workflow", {
     const transportErrorRef = referenceFor(snapshot, "Drop connection", "button");
 
     for (const ref of [consoleErrorRef, runtimeErrorRef, httpErrorRef, transportErrorRef]) {
-      await chroma(["click", ref, "--tab", tabId]);
+      await bugbaton(["click", ref, "--tab", tabId]);
     }
 
     await poll(
       "console and runtime errors",
-      () => chroma(["errors", "--tab", tabId, "--limit", "100"]),
+      () => bugbaton(["errors", "--tab", tabId, "--limit", "100"]),
       (value) => {
         const messages = value.events.map((event) => event.message).join("\n");
         return messages.includes("fixture:deliberate-console-error")
@@ -569,13 +574,13 @@ test("real Chrome completes the diagnosis and report workflow", {
     );
     await poll(
       "HTTP and transport failures",
-      () => chroma(["network", "--failed", "--tab", tabId, "--limit", "100"]),
+      () => bugbaton(["network", "--failed", "--tab", tabId, "--limit", "100"]),
       (value) => value.events.some((event) => event.kind === "network-http-error" && event.status === 503)
         && value.events.some((event) => event.kind === "network-failed"),
     );
     await delay(250);
-    const errors = await chroma(["errors", "--tab", tabId, "--limit", "100"]);
-    const network = await chroma(["network", "--failed", "--tab", tabId, "--limit", "100"]);
+    const errors = await bugbaton(["errors", "--tab", tabId, "--limit", "100"]);
+    const network = await bugbaton(["network", "--failed", "--tab", tabId, "--limit", "100"]);
     const humanErrors = await runHumanCli(stateDir, ["errors", "--tab", tabId, "--limit", "100"]);
     const humanNetwork = await runHumanCli(stateDir, ["network", "--failed", "--tab", tabId, "--limit", "100"]);
     assert.match(humanErrors.stdout, /fixture:deliberate-console-error/);
@@ -607,7 +612,7 @@ test("real Chrome completes the diagnosis and report workflow", {
     assert.equal(Object.hasOwn(transportFailure, "timestamp"), false);
     assert.match(transportFailure.message, /ERR_|failed|empty/i);
 
-    const screenshot = await chroma([
+    const screenshot = await bugbaton([
       "screenshot", "--tab", tabId, "--full-page", "--output", screenshotPath,
     ]);
     assert.equal(screenshot.path, screenshotPath);
@@ -622,7 +627,7 @@ test("real Chrome completes the diagnosis and report workflow", {
     );
     assert.equal(screenshotCollision.details, undefined);
 
-    const report = await chroma(["report", "--tab", tabId, "--output", reportPath], { timeout: 30_000 });
+    const report = await bugbaton(["report", "--tab", tabId, "--output", reportPath], { timeout: 30_000 });
     assert.equal(report.path, reportPath);
     assert.equal(report.status, "complete");
     assert.deepEqual(new Set(report.files), new Set(["report.json", "README.md", "screenshot.png"]));
@@ -647,19 +652,23 @@ test("real Chrome completes the diagnosis and report workflow", {
     assert.equal(reportJson.sections.failedNetwork.status, "collected");
     assert.equal(reportJson.sections.actionOutcomes.status, "collected");
     assert.ok(reportJson.actionOutcomes.length >= 6);
-    assert.ok(reportJson.actionOutcomes.some((action) => action.action === "fill" && action.textLength === "hello chroma".length));
+    assert.ok(reportJson.actionOutcomes.some((action) => action.action === "fill" && action.textLength === "hello bugbaton".length));
     assert.equal(reportJson.actionOutcomes.some((action) => Object.hasOwn(action, "text")), false);
     assert.ok(reportJson.timeline.some((entry) => entry.correlation?.basis === "temporal" && entry.correlation.confidence === "low" && entry.correlation.afterActionId));
     assert.match(reportJson.correlationPolicy.caveat, /does not prove/);
     assert.equal(reportJson.sections.screenshot.status, "collected");
     assert.ok(reportJson.failedNetwork.some((event) => event.status === 503));
     const reportReadme = await readFile(join(reportPath, "README.md"), "utf8");
-    assert.doesNotMatch(reportReadme, /CHROMA_E2E_SECRET|CHROMA_E2E_FILL_SECRET/);
+    assert.doesNotMatch(reportReadme, /BUGBATON_E2E_SECRET|BUGBATON_E2E_FILL_SECRET/);
     assert.match(reportReadme, /view=compact/);
     const reportPng = await readFile(join(reportPath, "screenshot.png"));
     assert.deepEqual([...reportPng.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
     assert.equal(reportJson.artifactIntegrity.algorithm, "sha256");
     assert.equal(reportJson.artifactIntegrity.attachments[0].sha256, createHash("sha256").update(reportPng).digest("hex"));
+    const verifiedReport = await bugbaton(["verify", reportPath]);
+    assert.equal(verifiedReport.status, "verified");
+    assert.equal(verifiedReport.attachments[0].verified, true);
+    assert.equal(verifiedReport.receipt.present, false);
     const reportCollision = await expectCliFailure(
       stateDir,
       ["report", "--tab", tabId, "--output", reportPath],
@@ -668,7 +677,7 @@ test("real Chrome completes the diagnosis and report workflow", {
     assert.equal(reportCollision.details.path, reportPath);
 
     const noScreenshotReportPath = join(artifactsDir, "report-no-screenshot");
-    const noScreenshotReport = await chroma(["report", "--tab", tabId, "--no-screenshot", "--output", noScreenshotReportPath]);
+    const noScreenshotReport = await bugbaton(["report", "--tab", tabId, "--no-screenshot", "--output", noScreenshotReportPath]);
     assert.equal(noScreenshotReport.status, "complete");
     assert.deepEqual(new Set(noScreenshotReport.files), new Set(["report.json", "README.md"]));
     const noScreenshotManifest = JSON.parse(await readFile(join(noScreenshotReportPath, "report.json"), "utf8"));
@@ -677,12 +686,12 @@ test("real Chrome completes the diagnosis and report workflow", {
     assert.equal(noScreenshotManifest.sections.screenshot.status, "skipped");
     assert.equal(noScreenshotManifest.sections.screenshot.reason.code, "USER_SKIPPED");
 
-    const clearedErrors = await chroma(["errors", "--tab", tabId, "--limit", "100", "--clear"]);
+    const clearedErrors = await bugbaton(["errors", "--tab", tabId, "--limit", "100", "--clear"]);
     assert.ok(clearedErrors.count >= 2);
     assert.equal(clearedErrors.cleared, true);
-    const afterClearErrors = await chroma(["errors", "--tab", tabId, "--limit", "100"]);
+    const afterClearErrors = await bugbaton(["errors", "--tab", tabId, "--limit", "100"]);
     assert.equal(afterClearErrors.count, 0);
-    const networkAfterErrorClear = await chroma(["network", "--failed", "--tab", tabId, "--limit", "100"]);
+    const networkAfterErrorClear = await bugbaton(["network", "--failed", "--tab", tabId, "--limit", "100"]);
     assert.ok(networkAfterErrorClear.count >= 2, "clearing errors must not consume network evidence");
 
     const stateFiles = await assertStateHasNoMarker(stateDir, fillSecret);
@@ -690,7 +699,7 @@ test("real Chrome completes the diagnosis and report workflow", {
       assert.equal(file.text.includes(querySecret), false, `${file.path} must redact sensitive query values`);
     }
     assert.ok(stateFiles.some((file) => file.text.includes("view=compact")), "state should retain the non-sensitive view query");
-    assert.doesNotMatch(JSON.stringify(reportJson), /CHROMA_E2E_SECRET|CHROMA_E2E_FILL_SECRET/);
+    assert.doesNotMatch(JSON.stringify(reportJson), /BUGBATON_E2E_SECRET|BUGBATON_E2E_FILL_SECRET/);
     assert.match(JSON.stringify(reportJson), /view=compact/);
 
     const artifactEntries = await readdir(artifactsDir);
@@ -704,22 +713,22 @@ test("real Chrome completes the diagnosis and report workflow", {
     const eventsBackupPath = join(stateDir, "events.before-fault.jsonl");
     await rename(eventsPath, eventsBackupPath);
     await mkdir(eventsPath);
-    await chroma(["click", consoleErrorRef, "--tab", tabId]);
+    await bugbaton(["click", consoleErrorRef, "--tab", tabId]);
     await poll(
       "event-store write failure metadata",
       () => readOptionalJson(join(stateDir, "monitor.json")),
       (state) => state?.eventStore?.writeFailures > 0,
     );
-    const degradedErrors = await chroma(["errors", "--tab", tabId]);
+    const degradedErrors = await bugbaton(["errors", "--tab", tabId]);
     assert.equal(degradedErrors.eventStore.health.status, "failed");
     assert.ok(degradedErrors.eventStore.health.reasons.includes("WRITE_FAILURE"));
     assert.ok(degradedErrors.eventStore.health.reasons.includes("READ_FAILURE"));
     assert.equal(degradedErrors.eventStore.cursor.readError.code, "EISDIR");
-    const degradedDoctor = await chroma(["doctor"]);
+    const degradedDoctor = await bugbaton(["doctor"]);
     assert.equal(degradedDoctor.status, "degraded");
     assert.equal(degradedDoctor.checks.find((check) => check.id === "event_store").status, "fail");
     const faultReportPath = join(artifactsDir, "fault-report");
-    const faultReport = await chroma(["report", "--tab", tabId, "--output", faultReportPath]);
+    const faultReport = await bugbaton(["report", "--tab", tabId, "--output", faultReportPath]);
     assert.equal(faultReport.status, "partial");
     const faultReportJson = JSON.parse(await readFile(join(faultReportPath, "report.json"), "utf8"));
     assert.equal(faultReportJson.status, "partial");
@@ -728,9 +737,9 @@ test("real Chrome completes the diagnosis and report workflow", {
 
     await rm(eventsPath, { recursive: true });
     await rename(eventsBackupPath, eventsPath);
-    const recovered = await chroma(["connect", launched.endpoint]);
+    const recovered = await bugbaton(["connect", launched.endpoint]);
     monitorPid = recovered.monitor.pid;
-    const recoveredDoctor = await chroma(["doctor"]);
+    const recoveredDoctor = await bugbaton(["doctor"]);
     assert.equal(recoveredDoctor.status, "ready");
 
     await stopOwnedProcessGroup(monitorPid);
@@ -740,25 +749,25 @@ test("real Chrome completes the diagnosis and report workflow", {
       `${JSON.stringify({ ...mismatchedMonitorState, sessionId: "previous-observation-session" }, null, 2)}\n`,
       { mode: 0o600 },
     );
-    const identityScopedErrors = await chroma(["errors", "--tab", tabId]);
+    const identityScopedErrors = await bugbaton(["errors", "--tab", tabId]);
     assert.equal(identityScopedErrors.count, 0, "events from a mismatched monitor must not be attributed to the live tab");
     assert.equal(identityScopedErrors.eventStore.cursor.ignored, true);
     assert.equal(identityScopedErrors.eventStore.cursor.ignoredReason, "MONITOR_IDENTITY_MISMATCH");
     const identityReportPath = join(artifactsDir, "identity-mismatch-report");
-    const identityReport = await chroma(["report", "--tab", tabId, "--no-screenshot", "--output", identityReportPath]);
+    const identityReport = await bugbaton(["report", "--tab", tabId, "--no-screenshot", "--output", identityReportPath]);
     assert.equal(identityReport.status, "partial");
     const identityManifest = JSON.parse(await readFile(join(identityReportPath, "report.json"), "utf8"));
     assert.equal(identityManifest.errors.length, 0);
     assert.equal(identityManifest.failedNetwork.length, 0);
     assert.equal(identityManifest.observation.boundary.ignoredReason, "MONITOR_IDENTITY_MISMATCH");
 
-    const identityRecovered = await chroma(["connect", launched.endpoint]);
+    const identityRecovered = await bugbaton(["connect", launched.endpoint]);
     monitorPid = identityRecovered.monitor.pid;
-    assert.equal((await chroma(["doctor"])).status, "ready");
+    assert.equal((await bugbaton(["doctor"])).status, "ready");
 
-    const retentionSnapshot = await chroma(["snapshot", "--tab", tabId]);
+    const retentionSnapshot = await bugbaton(["snapshot", "--tab", tabId]);
     const floodRef = referenceFor(retentionSnapshot, "Flood event log", "button");
-    await chroma(["click", floodRef, "--tab", tabId]);
+    await bugbaton(["click", floodRef, "--tab", tabId]);
     const rotatedState = await poll(
       "bounded event-store rotation",
       () => readOptionalJson(join(stateDir, "monitor.json")),
@@ -766,18 +775,18 @@ test("real Chrome completes the diagnosis and report workflow", {
     );
     assert.equal(rotatedState.eventStore.maxBytes, 64 * 1024);
     assert.equal(rotatedState.eventStore.status, "degraded");
-    const rotatedErrors = await chroma(["errors", "--tab", tabId, "--limit", "100"]);
+    const rotatedErrors = await bugbaton(["errors", "--tab", tabId, "--limit", "100"]);
     assert.ok(rotatedErrors.eventStore.health.reasons.includes("DROPPED_EVENTS"));
     assert.ok(rotatedErrors.eventStore.health.reasons.includes("TRUNCATED_EVENTS"));
     assert.ok(rotatedErrors.eventStore.cursor.bytes <= 64 * 1024);
     assert.ok(rotatedErrors.events.some((event) => event.message.includes("fixture:oversized:") && event.message.endsWith("[truncated]")));
 
     await appendFile(join(stateDir, "events.jsonl"), "{fixture-corrupt-line}\n");
-    const corruptErrors = await chroma(["errors", "--tab", tabId]);
+    const corruptErrors = await bugbaton(["errors", "--tab", tabId]);
     assert.equal(corruptErrors.eventStore.cursor.corruptLines, 1);
     assert.ok(corruptErrors.eventStore.health.reasons.includes("CORRUPT_LINES"));
     const retentionReportPath = join(artifactsDir, "retention-report");
-    const retentionReport = await chroma(["report", "--tab", tabId, "--output", retentionReportPath]);
+    const retentionReport = await bugbaton(["report", "--tab", tabId, "--output", retentionReportPath]);
     assert.equal(retentionReport.status, "partial");
 
     await stopOwnedProcessGroup(monitorPid);
@@ -791,17 +800,17 @@ test("real Chrome completes the diagnosis and report workflow", {
     );
     assert.equal(restartState.eventStore.status, "degraded");
     assert.ok(restartState.discontinuities.some((entry) => entry.code === "MONITOR_RESTART"));
-    const restartDoctor = await chroma(["doctor"]);
+    const restartDoctor = await bugbaton(["doctor"]);
     assert.equal(restartDoctor.status, "degraded");
     assert.ok(restartDoctor.checks.find((check) => check.id === "event_store").observed.health.reasons.includes("UNKNOWN_RESTART_GAP"));
     const restartReportPath = join(artifactsDir, "restart-report");
-    const restartReport = await chroma(["report", "--tab", tabId, "--output", restartReportPath]);
+    const restartReport = await bugbaton(["report", "--tab", tabId, "--output", restartReportPath]);
     assert.equal(restartReport.status, "partial");
     const restartReportJson = JSON.parse(await readFile(join(restartReportPath, "report.json"), "utf8"));
     assert.ok(restartReportJson.observation.discontinuities.some((entry) => entry.code === "MONITOR_RESTART"));
   } finally {
-    if (previousEventMaxBytes === undefined) delete process.env.CHROMA_EVENT_MAX_BYTES;
-    else process.env.CHROMA_EVENT_MAX_BYTES = previousEventMaxBytes;
+    if (previousEventMaxBytes === undefined) delete process.env.BUGBATON_EVENT_MAX_BYTES;
+    else process.env.BUGBATON_EVENT_MAX_BYTES = previousEventMaxBytes;
     const monitorState = await readOptionalJson(join(stateDir, "monitor.json")).catch(() => null);
     const sessionState = await readOptionalJson(join(stateDir, "session.json")).catch(() => null);
     const discovered = await discoverOwnedProcessGroups(stateDir, profileDir);
@@ -816,10 +825,9 @@ test("real Chrome completes the diagnosis and report workflow", {
 });
 
 test("capture records manual actions, writes evidence, and stops its session", {
-  skip: RUN_REAL_CHROME ? false : "set CHROMA_E2E=1 to run the real-Chrome lane",
   timeout: 30_000,
 }, async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "chroma-capture-e2e-"));
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "bugbaton-capture-e2e-"));
   const stateDir = join(temporaryRoot, "state");
   const profileDir = join(temporaryRoot, "chrome-profile");
   const reportDir = join(temporaryRoot, "report");
@@ -876,6 +884,9 @@ test("capture records manual actions, writes evidence, and stops its session", {
     assert.match(await readFile(join(reportDir, "README.md"), "utf8"), /## Bug claim[\s\S]*HTTP request fails[\s\S]*Expected:[\s\S]*Actual:/);
     assert.equal(report.observation.coverage, "best-effort");
     assert.deepEqual(receipt.sessionShutdown, { complete: true, monitorStopped: true, browserOwned: true, browserClosed: true });
+    const verifiedReport = await createCli(stateDir)(["verify", reportDir]);
+    assert.equal(verifiedReport.status, "verified");
+    assert.equal(verifiedReport.receipt.shutdownComplete, true);
     assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "click" && action.target?.ordinal));
     assert.ok(report.actionOutcomes.some((action) => action.source === "browser" && action.action === "input" && action.textLength === privateValue.length));
     assert.doesNotMatch(JSON.stringify(report), new RegExp(privateValue));
@@ -892,10 +903,9 @@ test("capture records manual actions, writes evidence, and stops its session", {
 });
 
 test("demo refuses an empty success claim and accepts a captured failure", {
-  skip: RUN_REAL_CHROME ? false : "set CHROMA_E2E=1 to run the real-Chrome lane",
   timeout: 30_000,
 }, async () => {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), "chroma-demo-e2e-"));
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "bugbaton-demo-e2e-"));
   const emptyStateDir = join(temporaryRoot, "empty-state");
   const emptyProfileDir = join(temporaryRoot, "empty-profile");
   const emptyReportDir = join(temporaryRoot, "empty-report");
@@ -919,6 +929,9 @@ test("demo refuses an empty success claim and accepts a captured failure", {
     assert.equal(emptyReport.status, "complete", "bundle integrity and demo evidence are separate claims");
     assert.equal(emptyReport.evidenceRequirement.status, "not-met");
     assert.match(await readFile(join(emptyReportDir, "README.md"), "utf8"), /Demo evidence requirement: \*\*not-met\*\*/);
+    const emptyVerified = await createCli(emptyStateDir)(["verify", emptyReportDir]);
+    assert.equal(emptyVerified.status, "verified");
+    assert.equal(emptyVerified.evidenceRequirement.status, "not-met");
 
     const capturedArgs = [CLI, "--state-dir", capturedStateDir, "--json", "demo", "--headless", "--deterministic", "--profile", capturedProfileDir, "--duration", "2", "--output", capturedReportDir];
     if (process.env.CHROME_PATH) capturedArgs.push("--chrome", process.env.CHROME_PATH);
@@ -938,7 +951,7 @@ test("demo refuses an empty success claim and accepts a captured failure", {
     ownedPids.add(monitor.pid);
     const tab = await poll(
       "demo tab",
-      async () => (await listTabs(session.endpoint)).find((candidate) => candidate.title === "Chroma capture demo"),
+      async () => (await listTabs(session.endpoint)).find((candidate) => candidate.title === "BugBaton capture demo"),
       Boolean,
     );
     await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
@@ -958,6 +971,9 @@ test("demo refuses an empty success claim and accepts a captured failure", {
     assert.ok(capturedEnvelope.data.report.summary.failedNetwork >= 1);
     assert.equal(capturedEnvelope.data.receipt.sessionShutdown.complete, true);
     assert.match(await readFile(join(capturedReportDir, "README.md"), "utf8"), /Demo evidence requirement: \*\*met\*\*/);
+    const capturedVerified = await createCli(capturedStateDir)(["verify", capturedReportDir]);
+    assert.equal(capturedVerified.status, "verified");
+    assert.equal(capturedVerified.evidenceRequirement.status, "met");
   } finally {
     for (const pid of ownedPids) await stopOwnedProcessGroup(pid);
     await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

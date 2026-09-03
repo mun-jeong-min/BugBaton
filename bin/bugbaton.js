@@ -21,12 +21,12 @@ try {
       error: errorPayload(error, "INTERNAL_ERROR"),
     })}\n`);
   } else {
-    process.stderr.write(`chroma: ${safeSingleLine(error.message)}\n`);
+    process.stderr.write(`bugbaton: ${safeSingleLine(error.message)}\n`);
   }
   process.exitCode = error.exitCode ?? 1;
 }
 
 // Node's built-in WebSocket may retain a close-handshake timer after a
-// one-shot CDP command. All command output is synchronous; exit explicitly so
+// one-shot browser command. All command output is synchronous; exit explicitly so
 // the shell does not wait on transport cleanup that cannot affect the result.
 process.exit(process.exitCode ?? 0);

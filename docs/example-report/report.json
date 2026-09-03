@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "status": "complete",
-  "generatedAt": "2026-09-02T12:59:56.058Z",
-  "completedAt": "2026-09-02T12:59:56.155Z",
+  "generatedAt": "2026-09-03T02:01:26.339Z",
+  "completedAt": "2026-09-03T02:01:26.410Z",
   "producer": {
-    "name": "chroma",
+    "name": "bugbaton",
     "version": "0.1.0",
     "node": "v26.0.0",
     "platform": "darwin"
@@ -14,34 +14,66 @@
     "protocolVersion": "1.3"
   },
   "connection": {
-    "sessionId": "0b5adf3d-419d-42da-ad0f-1abe299376a1",
-    "endpoint": "http://127.0.0.1:59681",
+    "sessionId": "01ff025e-cf0f-468b-8897-ddc3e90dc9c2",
+    "endpoint": "http://127.0.0.1:63485",
     "mode": "launch",
-    "launchedChromePid": 6808,
+    "launchedChromePid": 38605,
     "isolatedProfile": false,
     "deterministicLaunch": true
   },
   "tab": {
-    "id": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-    "title": "Chroma CDP fixture",
-    "url": "http://127.0.0.1:4173/"
+    "id": "D994CAF1D4E763A644F96DD21B131F05",
+    "title": "BugBaton capture demo",
+    "url": "http://127.0.0.1:63484/"
   },
   "claim": {
     "title": "The request fails after one click",
     "expected": "The request completes successfully.",
     "actual": "The endpoint returns HTTP 503 and the page logs an error."
   },
+  "evidenceRequirement": {
+    "id": "demo-minimum-v1",
+    "description": "At least one recorded action, browser error, and failed or HTTP-error request.",
+    "minimums": {
+      "actions": 1,
+      "errors": 1,
+      "failedNetwork": 1
+    },
+    "status": "met",
+    "observed": {
+      "actions": 4,
+      "errors": 3,
+      "failedNetwork": 1
+    },
+    "checks": {
+      "actions": {
+        "minimum": 1,
+        "observed": 4,
+        "met": true
+      },
+      "errors": {
+        "minimum": 1,
+        "observed": 3,
+        "met": true
+      },
+      "failedNetwork": {
+        "minimum": 1,
+        "observed": 1,
+        "met": true
+      }
+    }
+  },
   "observation": {
-    "startedAt": "2026-09-02T12:57:56.046Z",
-    "monitorStartedAt": "2026-09-02T12:57:55.491Z",
+    "startedAt": "2026-09-03T02:01:22.300Z",
+    "monitorStartedAt": "2026-09-03T02:01:21.728Z",
     "boundary": {
-      "id": "8145bc941cbec91009a0",
-      "capturedAt": "2026-09-02T12:59:56.065Z",
-      "bytes": 2786,
+      "id": "7ea5ed073f0192a6b893",
+      "capturedAt": "2026-09-03T02:01:26.344Z",
+      "bytes": 2799,
       "records": 10,
       "corruptLines": 0,
       "readError": null,
-      "lastObservedAt": "2026-09-02T12:58:15.317Z"
+      "lastObservedAt": "2026-09-03T02:01:23.301Z"
     },
     "monitorRunning": true,
     "coverage": "best-effort",
@@ -62,36 +94,36 @@
     "snapshot": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:59:56.090Z"
+      "capturedAt": "2026-09-03T02:01:26.365Z"
     },
     "errors": {
       "status": "collected",
       "reason": null,
-      "boundaryId": "8145bc941cbec91009a0"
+      "boundaryId": "7ea5ed073f0192a6b893"
     },
     "failedNetwork": {
       "status": "collected",
       "reason": null,
-      "boundaryId": "8145bc941cbec91009a0"
+      "boundaryId": "7ea5ed073f0192a6b893"
     },
     "actionOutcomes": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:59:56.093Z",
-      "boundaryId": "8145bc941cbec91009a0"
+      "capturedAt": "2026-09-03T02:01:26.368Z",
+      "boundaryId": "7ea5ed073f0192a6b893"
     },
     "screenshot": {
       "status": "collected",
       "reason": null,
-      "capturedAt": "2026-09-02T12:59:56.154Z"
+      "capturedAt": "2026-09-03T02:01:26.410Z"
     }
   },
   "snapshot": {
-    "capturedAt": "2026-09-02T12:59:56.090Z",
-    "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-    "url": "http://127.0.0.1:4173/",
-    "loaderId": "9273727C3B21DD2A3814FF2477F0533C",
-    "title": "Chroma CDP fixture",
+    "capturedAt": "2026-09-03T02:01:26.365Z",
+    "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+    "url": "http://127.0.0.1:63484/",
+    "loaderId": "0755960949936587567F0B0B8D8FAF9F",
+    "title": "BugBaton capture demo",
     "nodes": [
       {
         "ref": null,
@@ -102,123 +134,39 @@
       {
         "ref": null,
         "role": "heading",
-        "name": "Chroma CDP fixture",
+        "name": "Make a small browser bug, then keep the evidence.",
         "backendDOMNodeId": 7
-      },
-      {
-        "ref": null,
-        "role": "status",
-        "name": "",
-        "backendDOMNodeId": 9
-      },
-      {
-        "ref": null,
-        "role": "heading",
-        "name": "Interaction",
-        "backendDOMNodeId": 12
       },
       {
         "ref": "@e1",
         "role": "button",
-        "name": "Increment counter",
-        "backendDOMNodeId": 14
+        "name": "1. Request an endpoint that returns HTTP 503",
+        "backendDOMNodeId": 11
       },
       {
         "ref": "@e2",
         "role": "button",
-        "name": "Cover increment button",
-        "backendDOMNodeId": 16
+        "name": "2. Write a deliberate console error",
+        "backendDOMNodeId": 13
       },
       {
         "ref": null,
         "role": "status",
         "name": "",
-        "backendDOMNodeId": 18
-      },
-      {
-        "ref": null,
-        "role": "heading",
-        "name": "Diagnostics",
-        "backendDOMNodeId": 26
+        "backendDOMNodeId": 19
       },
       {
         "ref": "@e3",
-        "role": "button",
-        "name": "Request 200",
-        "backendDOMNodeId": 28
+        "role": "textbox",
+        "name": "Demo note",
+        "value": "[redacted]",
+        "backendDOMNodeId": 2
       },
       {
         "ref": "@e4",
         "role": "button",
-        "name": "Request 503",
-        "backendDOMNodeId": 30
-      },
-      {
-        "ref": "@e5",
-        "role": "button",
-        "name": "Drop connection",
-        "backendDOMNodeId": 32
-      },
-      {
-        "ref": "@e6",
-        "role": "button",
-        "name": "Log console error",
-        "backendDOMNodeId": 34
-      },
-      {
-        "ref": "@e7",
-        "role": "button",
-        "name": "Throw runtime error",
-        "backendDOMNodeId": 36
-      },
-      {
-        "ref": "@e8",
-        "role": "button",
-        "name": "Reload same URL",
-        "backendDOMNodeId": 38
-      },
-      {
-        "ref": "@e9",
-        "role": "button",
-        "name": "Flood event log",
-        "backendDOMNodeId": 40
-      },
-      {
-        "ref": null,
-        "role": "heading",
-        "name": "Snapshot landmarks",
-        "backendDOMNodeId": 43
-      },
-      {
-        "ref": null,
-        "role": "navigation",
-        "name": "Fixture links",
-        "backendDOMNodeId": 45
-      },
-      {
-        "ref": "@e10",
-        "role": "textbox",
-        "name": "Message",
-        "value": "[redacted]",
-        "backendDOMNodeId": 3
-      },
-      {
-        "ref": "@e11",
-        "role": "button",
-        "name": "Submit",
-        "backendDOMNodeId": 23
-      },
-      {
-        "ref": "@e12",
-        "role": "link",
-        "name": "Skip to details",
-        "backendDOMNodeId": 46
-      },
-      {
-        "ref": null,
-        "role": "heading",
-        "name": "Stable content",
-        "backendDOMNodeId": 49
+        "name": "Submit note",
+        "backendDOMNodeId": 17
       }
     ]
   },
@@ -226,109 +174,109 @@
     {
       "kind": "error",
       "source": "network",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/api/http-error",
-      "sourceTimestamp": "2026-09-02T12:58:13.703Z",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/api/failure",
+      "sourceTimestamp": "2026-09-03T02:01:22.446Z",
       "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "observedAt": "2026-09-02T12:58:13.704Z"
+      "observedAt": "2026-09-03T02:01:22.447Z"
     },
     {
       "kind": "error",
       "source": "console",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788353893704.296,
-      "message": "fixture:request-failed Error: HTTP 503 Service Unavailable\n    at request (http://127.0.0.1:4173/app.js:51:13)",
-      "observedAt": "2026-09-02T12:58:13.706Z"
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/app.js",
+      "cdpMonotonicSeconds": 1788400882447.615,
+      "message": "demo: request failed Error: HTTP 503 Service Unavailable\n    at HTMLButtonElement.<anonymous> (http://127.0.0.1:63484/app.js:5:29)",
+      "observedAt": "2026-09-03T02:01:22.450Z"
     },
     {
       "kind": "error",
       "source": "console",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788353894203.789,
-      "message": "fixture:deliberate-console-error Object",
-      "observedAt": "2026-09-02T12:58:14.204Z"
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/app.js",
+      "cdpMonotonicSeconds": 1788400882847.01,
+      "message": "demo: deliberate console error",
+      "observedAt": "2026-09-03T02:01:22.847Z"
     }
   ],
   "failedNetwork": [
     {
       "kind": "network-http-error",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "requestId": "6820.6",
-      "cdpMonotonicSeconds": 1692876.981017,
-      "url": "http://127.0.0.1:4173/api/http-error",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "requestId": "38618.4",
+      "cdpMonotonicSeconds": 1739865.771493,
+      "url": "http://127.0.0.1:63484/api/failure",
       "method": "GET",
       "durationToHeadersMs": 3,
       "initiatorType": "script",
-      "initiatorUrl": "http://127.0.0.1:4173/app.js",
-      "initiatorLine": 48,
+      "initiatorUrl": "http://127.0.0.1:63484/app.js",
+      "initiatorLine": 3,
       "status": 503,
       "statusText": "Service Unavailable",
       "resourceType": "Fetch",
-      "observedAt": "2026-09-02T12:58:13.704Z"
+      "observedAt": "2026-09-03T02:01:22.447Z"
     }
   ],
   "actionOutcomes": [
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/",
-      "actionId": "551bc0539e45419f",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/",
+      "actionId": "4e6738acc1caeb6c",
       "action": "click",
       "target": {
         "tag": "button",
         "role": null,
         "type": "button",
-        "ordinal": 7
+        "ordinal": 1
       },
-      "observedAt": "2026-09-02T12:58:13.700Z"
+      "observedAt": "2026-09-03T02:01:22.443Z"
     },
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/",
-      "actionId": "2c7ac6126be01ee9",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/",
+      "actionId": "17d243a3fbc55f2e",
       "action": "click",
       "target": {
         "tag": "button",
         "role": null,
         "type": "button",
-        "ordinal": 9
+        "ordinal": 2
       },
-      "observedAt": "2026-09-02T12:58:14.204Z"
+      "observedAt": "2026-09-03T02:01:22.847Z"
     },
     {
       "kind": "user-action",
       "source": "browser",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/",
-      "actionId": "4f68c83125d4135e",
-      "action": "input",
-      "target": {
-        "tag": "input",
-        "role": null,
-        "type": null,
-        "ordinal": 4
-      },
-      "textLength": 14,
-      "observedAt": "2026-09-02T12:58:14.959Z"
-    },
-    {
-      "kind": "user-action",
-      "source": "browser",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/",
-      "actionId": "986cb0ddf51be27c",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/",
+      "actionId": "d39381f1f41b179f",
       "action": "submit",
       "target": {
         "tag": "form",
         "role": null,
         "type": null
       },
-      "observedAt": "2026-09-02T12:58:15.317Z"
+      "observedAt": "2026-09-03T02:01:23.054Z"
+    },
+    {
+      "kind": "user-action",
+      "source": "browser",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/",
+      "actionId": "0081008e24339895",
+      "action": "input",
+      "target": {
+        "tag": "input",
+        "role": null,
+        "type": null,
+        "ordinal": 3
+      },
+      "textLength": 14,
+      "observedAt": "2026-09-03T02:01:23.301Z"
     }
   ],
   "correlationPolicy": {
@@ -340,31 +288,31 @@
   "timeline": [
     {
       "type": "action",
-      "at": "2026-09-02T12:58:13.700Z",
-      "actionId": "551bc0539e45419f",
+      "at": "2026-09-03T02:01:22.443Z",
+      "actionId": "4e6738acc1caeb6c",
       "source": "browser",
       "action": "click",
       "target": {
         "tag": "button",
         "role": null,
         "type": "button",
-        "ordinal": 7
+        "ordinal": 1
       }
     },
     {
       "type": "error",
       "kind": "error",
       "source": "network",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/api/http-error",
-      "sourceTimestamp": "2026-09-02T12:58:13.703Z",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/api/failure",
+      "sourceTimestamp": "2026-09-03T02:01:22.446Z",
       "message": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "observedAt": "2026-09-02T12:58:13.704Z",
-      "at": "2026-09-02T12:58:13.704Z",
+      "observedAt": "2026-09-03T02:01:22.447Z",
+      "at": "2026-09-03T02:01:22.447Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "551bc0539e45419f",
+        "afterActionId": "4e6738acc1caeb6c",
         "deltaMs": 4,
         "windowMs": 10000
       }
@@ -372,24 +320,24 @@
     {
       "type": "network",
       "kind": "network-http-error",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "requestId": "6820.6",
-      "cdpMonotonicSeconds": 1692876.981017,
-      "url": "http://127.0.0.1:4173/api/http-error",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "requestId": "38618.4",
+      "cdpMonotonicSeconds": 1739865.771493,
+      "url": "http://127.0.0.1:63484/api/failure",
       "method": "GET",
       "durationToHeadersMs": 3,
       "initiatorType": "script",
-      "initiatorUrl": "http://127.0.0.1:4173/app.js",
-      "initiatorLine": 48,
+      "initiatorUrl": "http://127.0.0.1:63484/app.js",
+      "initiatorLine": 3,
       "status": 503,
       "statusText": "Service Unavailable",
       "resourceType": "Fetch",
-      "observedAt": "2026-09-02T12:58:13.704Z",
-      "at": "2026-09-02T12:58:13.704Z",
+      "observedAt": "2026-09-03T02:01:22.447Z",
+      "at": "2026-09-03T02:01:22.447Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "551bc0539e45419f",
+        "afterActionId": "4e6738acc1caeb6c",
         "deltaMs": 4,
         "windowMs": 10000
       }
@@ -398,69 +346,55 @@
       "type": "error",
       "kind": "error",
       "source": "console",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788353893704.296,
-      "message": "fixture:request-failed Error: HTTP 503 Service Unavailable\n    at request (http://127.0.0.1:4173/app.js:51:13)",
-      "observedAt": "2026-09-02T12:58:13.706Z",
-      "at": "2026-09-02T12:58:13.706Z",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/app.js",
+      "cdpMonotonicSeconds": 1788400882447.615,
+      "message": "demo: request failed Error: HTTP 503 Service Unavailable\n    at HTMLButtonElement.<anonymous> (http://127.0.0.1:63484/app.js:5:29)",
+      "observedAt": "2026-09-03T02:01:22.450Z",
+      "at": "2026-09-03T02:01:22.450Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "551bc0539e45419f",
-        "deltaMs": 6,
+        "afterActionId": "4e6738acc1caeb6c",
+        "deltaMs": 7,
         "windowMs": 10000
       }
     },
     {
       "type": "action",
-      "at": "2026-09-02T12:58:14.204Z",
-      "actionId": "2c7ac6126be01ee9",
+      "at": "2026-09-03T02:01:22.847Z",
+      "actionId": "17d243a3fbc55f2e",
       "source": "browser",
       "action": "click",
       "target": {
         "tag": "button",
         "role": null,
         "type": "button",
-        "ordinal": 9
+        "ordinal": 2
       }
     },
     {
       "type": "error",
       "kind": "error",
       "source": "console",
-      "targetId": "F6BCBE32985D4B2AE56C22E20DB07A4B",
-      "url": "http://127.0.0.1:4173/app.js",
-      "cdpMonotonicSeconds": 1788353894203.789,
-      "message": "fixture:deliberate-console-error Object",
-      "observedAt": "2026-09-02T12:58:14.204Z",
-      "at": "2026-09-02T12:58:14.204Z",
+      "targetId": "D994CAF1D4E763A644F96DD21B131F05",
+      "url": "http://127.0.0.1:63484/app.js",
+      "cdpMonotonicSeconds": 1788400882847.01,
+      "message": "demo: deliberate console error",
+      "observedAt": "2026-09-03T02:01:22.847Z",
+      "at": "2026-09-03T02:01:22.847Z",
       "correlation": {
         "basis": "temporal",
         "confidence": "low",
-        "afterActionId": "2c7ac6126be01ee9",
+        "afterActionId": "17d243a3fbc55f2e",
         "deltaMs": 0,
         "windowMs": 10000
       }
     },
     {
       "type": "action",
-      "at": "2026-09-02T12:58:14.959Z",
-      "actionId": "4f68c83125d4135e",
-      "source": "browser",
-      "action": "input",
-      "target": {
-        "tag": "input",
-        "role": null,
-        "type": null,
-        "ordinal": 4
-      },
-      "textLength": 14
-    },
-    {
-      "type": "action",
-      "at": "2026-09-02T12:58:15.317Z",
-      "actionId": "986cb0ddf51be27c",
+      "at": "2026-09-03T02:01:23.054Z",
+      "actionId": "d39381f1f41b179f",
       "source": "browser",
       "action": "submit",
       "target": {
@@ -468,6 +402,20 @@
         "role": null,
         "type": null
       }
+    },
+    {
+      "type": "action",
+      "at": "2026-09-03T02:01:23.301Z",
+      "actionId": "0081008e24339895",
+      "source": "browser",
+      "action": "input",
+      "target": {
+        "tag": "input",
+        "role": null,
+        "type": null,
+        "ordinal": 3
+      },
+      "textLength": 14
     }
   ],
   "screenshot": "screenshot.png",
@@ -476,8 +424,8 @@
     "attachments": [
       {
         "path": "screenshot.png",
-        "bytes": 71557,
-        "sha256": "a91ed3ca4c5024961725367c2f2e68d56927a1b5a28125efbede5b1e93dfce8e"
+        "bytes": 58224,
+        "sha256": "463225bdf37d63be81c16675fcbac678fed7e91ae3357e12dc8a1525250e4957"
       }
     ]
   }

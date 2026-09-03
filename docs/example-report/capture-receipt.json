@@ -1,8 +1,40 @@
 {
   "schemaVersion": 1,
-  "completedAt": "2026-09-02T12:59:56.894Z",
+  "completedAt": "2026-09-03T02:01:26.842Z",
   "endedBy": "duration",
   "bundleStatus": "complete",
+  "evidenceRequirement": {
+    "id": "demo-minimum-v1",
+    "description": "At least one recorded action, browser error, and failed or HTTP-error request.",
+    "minimums": {
+      "actions": 1,
+      "errors": 1,
+      "failedNetwork": 1
+    },
+    "status": "met",
+    "observed": {
+      "actions": 4,
+      "errors": 3,
+      "failedNetwork": 1
+    },
+    "checks": {
+      "actions": {
+        "minimum": 1,
+        "observed": 4,
+        "met": true
+      },
+      "errors": {
+        "minimum": 1,
+        "observed": 3,
+        "met": true
+      },
+      "failedNetwork": {
+        "minimum": 1,
+        "observed": 1,
+        "met": true
+      }
+    }
+  },
   "sessionShutdown": {
     "complete": true,
     "monitorStopped": true,

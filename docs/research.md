@@ -15,9 +15,9 @@
 
 **Recommended position after the community re-audit:**
 
-> Reproduce once. Close Chrome. Keep the evidence.
+> Pass the bug, not the browser.
 
-Playwright automates a flow and DevTools investigates a browser. Chroma preserves
+Playwright automates a flow and DevTools investigates a browser. BugBaton preserves
 one real-Chrome reproduction as ordinary files that can move between a person,
 shell, issue, and coding agent after the live session ends. Public copy should
 lead with the artifact surviving the browser session, not protocol names or a
@@ -35,12 +35,15 @@ existing-browser attachment plus console and network inspection. Community tools
 also provide direct CDP access, daemons, JSON output, stable tab aliases, and
 buffered console and network events.
 
-Chroma should therefore compete on four narrow outcomes:
+BugBaton should therefore compete on four narrow outcomes:
 
 1. `doctor` identifies the actual connection failure and gives an executable next step.
 2. `errors` and `network --failed` return normalized failures instead of raw event dumps.
 3. Every result states its observation boundary, selected target, and known evidence gaps.
 4. `report` packages page state, screenshot, errors, failed requests, environment, redaction, and provenance from one evidence boundary.
+5. `verify` lets the recipient check compatible structure, safe attachment
+   paths, hashes, and shutdown-receipt consistency after Chrome is gone, while
+   explicitly declining to claim producer authenticity.
 
 Commands such as `click`, `fill`, `press`, `snapshot`, and `screenshot` are necessary
 for reproduction, but they are supporting capabilities rather than the product's
@@ -57,7 +60,7 @@ between tools were among the leading sources of lost time. [Atlassian Developer
 Experience Report 2025](https://www.atlassian.com/blog/developer/developer-experience-report-2025)
 
 **Limit:** This survey did not measure browser-debugging demand or demand for
-Chroma. It supports only the broader claim that reducing context collection and
+BugBaton. It supports only the broader claim that reducing context collection and
 transfer is a meaningful developer-experience problem.
 
 **Fact:** Stack Overflow's analysis of more than 65,000 responses to its 2024
@@ -83,7 +86,7 @@ How to capture a NetLog dump](https://www.chromium.org/for-testers/providing-net
 console output, and timing together for failure diagnosis and team sharing.
 [Playwright CLI tracing](https://playwright.dev/agent-cli/commands/tracing)
 
-**Implication:** The evidence categories are already established. Chroma's useful
+**Implication:** The evidence categories are already established. BugBaton's useful
 claim is narrower: before starting a test suite or broad DevTools investigation,
 it turns one local-Chrome reproduction into a small, safe, provenance-bearing
 shell artifact.
@@ -101,7 +104,7 @@ information. Replies immediately suggested HAR export, Chrome Recorder, Sentry,
 and application instrumentation. [r/webdev: DevTools exports](https://www.reddit.com/r/webdev/comments/11mzrn5/dev_tools_you_know_whatd_be_really_cool_exports/)
 
 This is evidence for the friction, but also evidence that a generic "export
-DevTools" claim is weak. Chroma must explain why a cross-surface local reproduction
+DevTools" claim is weak. BugBaton must explain why a cross-surface local reproduction
 bundle is different from a network-only HAR file or production telemetry.
 
 **Observation:** Threads in r/ClaudeAI and r/cursor describe manually pasting
@@ -143,7 +146,7 @@ traces, breakpoints, hypotheses, and reproductions according to the problem. The
 dominant counterpoint is that debugging has no universal method. [r/ExperiencedDevs:
 How do you debug?](https://www.reddit.com/r/ExperiencedDevs/comments/1so7x49/how_do_you_debug/)
 
-Chroma should not claim to find a root cause or fix a bug automatically. It
+BugBaton should not claim to find a root cause or fix a bug automatically. It
 preserves a bounded reproduction for the next diagnostic step.
 
 **Observation:** Browser-MCP discussions on Hacker News and Reddit contain both
@@ -158,8 +161,8 @@ These signals lead to six copy principles:
 1. Do not lead with "an AI can see your browser." Strong MCP and CLI tools already do that.
 2. Name the specific moment between a human reproducing a bug and someone automating it.
 3. Lead with `no account`, `no cloud`, `no extension`, `no MCP server`, and ordinary JSON, Markdown, and PNG files.
-4. Say plainly that Chroma is unnecessary when a live agent can reproduce and verify the issue reliably in the same session.
-5. Do not promise automatic diagnosis or repair. Chroma preserves and hands off evidence.
+4. Say plainly that BugBaton is unnecessary when a live agent can reproduce and verify the issue reliably in the same session.
+5. Do not promise automatic diagnosis or repair. BugBaton preserves and hands off evidence.
 6. Acknowledge when HAR, NetLog, Sentry, Playwright, or DevTools is the better tool.
 
 ### Validated Job Story and Public Copy
@@ -172,23 +175,23 @@ The earlier copy-paste headline accurately described the pain, but `peek` used
 nearly identical language first and did not gain meaningful distribution. The
 public headline therefore moves to the differentiated artifact outcome:
 
-> **Reproduce once. Close Chrome. Keep the evidence.**
+> **Pass the bug, not the browser.**
 
 The supporting explanation is concrete about the evidence and output:
 
-> Start Chroma, reproduce the web app bug once, and keep page state, console
+> Start BugBaton, reproduce the web app bug once, and keep page state, console
 > errors, failed requests, browser identity, and a screenshot as ordinary
 > evidence files.
 
 The competitive comparison stays to one sentence:
 
 > Use Playwright to automate a known flow. Use DevTools or a browser MCP for live
-> investigation. Use Chroma when the evidence must outlive that session and move
+> investigation. Use BugBaton when the evidence must outlive that session and move
 > between a human, shell, issue, or coding agent.
 
 ## Competitive Landscape
 
-| Tool | Primary shape | Existing Chrome | Observation surface | Shell or machine output | What Chroma should not duplicate |
+| Tool | Primary shape | Existing Chrome | Observation surface | Shell or machine output | What BugBaton should not duplicate |
 | --- | --- | --- | --- | --- | --- |
 | Chrome DevTools MCP and CLI | Official MCP server and experimental daemon-backed CLI | URL or WebSocket endpoint; Chrome 144+ auto-connect | snapshot, console, network, screenshot, traces, Lighthouse, heap | CLI supports raw JSON | one CLI command per MCP tool |
 | Playwright CLI | Stateful CLI for coding agents | CDP URL or channel; extension attachment | snapshots, actions, console, requests, traces, recording, video | file and stdout oriented | a general browser automation and test CLI |
@@ -230,7 +233,7 @@ debugging port is sensitive, and that usage statistics are enabled by default
 but can be disabled. [Connection documentation](https://github.com/ChromeDevTools/chrome-devtools-mcp#connecting-to-a-running-chrome-instance)
 
 **Product implication:** This is the strongest direct alternative. "DevTools in
-a CLI" is not enough. Chroma must win on small diagnostic answers, provenance,
+a CLI" is not enough. BugBaton must win on small diagnostic answers, provenance,
 bounded persistence, and a transferable report.
 
 ### Playwright CLI and Playwright MCP
@@ -246,7 +249,7 @@ It includes console and network tools and can attach through CDP or an extension
 It offers origin and file-access guardrails but explicitly says the server is not
 a security boundary. [Playwright MCP README](https://github.com/microsoft/playwright-mcp)
 
-**Product implication:** Chroma should not compete on command count, locators,
+**Product implication:** BugBaton should not compete on command count, locators,
 cross-browser automation, or long-lived interactive exploration. Each shell call
 should instead produce a compact result that works in a pipe, CI job, or issue.
 
@@ -258,7 +261,7 @@ than its own protocol and that browsers launched with unexpected flags may lose
 functionality. It recommends a separate user-data directory instead of automating
 the default Chrome profile. [Playwright `connectOverCDP` API](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp)
 
-**Product implication:** Direct CDP gives Chroma tighter control over Chrome's
+**Product implication:** Direct CDP gives BugBaton tighter control over Chrome's
 observation semantics, with the explicit cost of being Chrome-only.
 
 ### Puppeteer
@@ -291,7 +294,7 @@ raw-protocol discovery already exist:
 - [chrome-cdp-cli](https://github.com/nicoster/chrome-devtools-cli)
 
 **Product implication:** Raw CDP can become an explicit escape hatch later. It
-should not be the center of Chroma because it makes the user manage domains,
+should not be the center of BugBaton because it makes the user manage domains,
 enable order, event lifetime, and target sessions directly.
 
 ## Product Requirements from the Gaps
@@ -319,7 +322,7 @@ The command combines `Runtime.exceptionThrown`, error-level
 `Runtime.consoleAPICalled`, and relevant `Log.entryAdded` records into one temporal
 schema. Duplicate messages and stacks should be fingerprinted while retaining
 count, first and last occurrence, source, URL, line, and column. Finding page
-errors is data; a Chroma execution failure is an exit-status error.
+errors is data; a BugBaton execution failure is an exit-status error.
 
 ### `network --failed`: Separate Failure Types
 
@@ -335,7 +338,7 @@ default report unless an explicit future policy safely adds them.
 ### Observation Is the Core Technical Contract
 
 CDP errors and network activity are event streams. A tool sees only events after
-it attaches and enables the relevant domains. Chroma therefore records monitor
+it attaches and enables the relevant domains. BugBaton therefore records monitor
 start, per-target observation start, readiness, navigation boundaries, selected
 target, buffer drops, corruption, and restart discontinuities.
 
@@ -384,7 +387,7 @@ Chrome 136 and later ignore remote-debugging flags against the default data
 directory and require a separate `--user-data-dir`. Chrome recommends Chrome for
 Testing for automation. [Chrome remote-debugging security change](https://developer.chrome.com/blog/remote-debugging-port)
 
-Chroma's default policy is therefore:
+BugBaton's default policy is therefore:
 
 - launch into a managed isolated profile;
 - accept loopback CDP endpoints by default and require explicit opt-in for remote endpoints;
@@ -394,7 +397,7 @@ Chroma's default policy is therefore:
 - keep arbitrary JavaScript, file transfer, and raw CDP out of the safe MVP surface;
 - make no product telemetry or external service call by default.
 
-Chroma is not a sandbox or a security boundary. CDP access grants broad control
+BugBaton is not a sandbox or a security boundary. CDP access grants broad control
 over the attached browser profile, and screenshots or accessibility text can
 still contain sensitive page content that requires human review.
 
@@ -428,7 +431,9 @@ current execution evidence are recorded in [`validation.md`](validation.md).
 
 1. **Connection reliability:** `doctor`, `launch`, `connect`, and `tabs` identify causal failures, use isolated profiles, and select targets safely.
 2. **Observation reliability:** `errors` and `network --failed` disclose pre-attach gaps and distinguish HTTP from transport failures.
-3. **Evidence transfer:** `report`, `screenshot`, and `snapshot` create bounded, redacted, same-boundary artifacts with provenance.
+3. **Evidence transfer:** `report`, `screenshot`, and `snapshot` create bounded,
+   redacted, same-boundary artifacts with provenance; `verify` checks a received
+   bundle without Chrome.
 4. **Lightweight reproduction:** `click`, `fill`, and `press` accept current references and reject stale or ambiguous targets.
 5. **Common contract:** JSON shape, stderr separation, exits, timeouts, and broken-pipe behavior are tested across commands.
 
@@ -438,7 +443,7 @@ The README now demonstrates value in under 30 seconds with the packaged,
 loopback-only failure page and the real capture path:
 
 ```sh
-chroma demo
+bugbaton demo
 ```
 
 The report example should connect an API failure, its nearby user action, a
@@ -451,7 +456,7 @@ The choice guide should be honest:
 - use Playwright for test suites and cross-browser automation;
 - use Chrome DevTools MCP for deep live investigation, performance, heap, or Lighthouse work;
 - use `bdg` or chrome-remote-interface for arbitrary CDP commands;
-- use Chroma to preserve and hand off one local-app reproduction.
+- use BugBaton to preserve and hand off one local-app reproduction.
 
 The demo is deliberately not a mock report: it starts the same monitor, Chrome,
 manual-action capture, report, and ownership-safe shutdown path used on a real
@@ -460,7 +465,7 @@ local app.
 The demo must also prove its own promise. A September 2026 Hacker News discussion
 about browser-agent CLIs identified the harder evaluation problem as separating a
 real behavioral verification from an agent merely reaching a page and reporting
-success. Chroma therefore treats a demo with no action, browser error, or failed
+success. BugBaton therefore treats a demo with no action, browser error, or failed
 request as `DEMO_EVIDENCE_INCOMPLETE`, retains the report, closes Chrome, and exits
 unsuccessfully instead of printing `Demo complete`. [Hacker News browser-agent
 CLI discussion](https://news.ycombinator.com/item?id=46901233)
@@ -471,7 +476,7 @@ The problem language has demonstrated reach: BrowserTools MCP had roughly 7,300
 GitHub stars at the September 2026 recheck, while ProofShot's proof-artifact
 launch earned 161 Hacker News points. Reddit developers repeatedly describe the
 same manual handoff of screenshots, console logs, network failures, and reproduction
-steps. These are qualitative signals of a real job, not evidence that Chroma has
+steps. These are qualitative signals of a real job, not evidence that BugBaton has
 product-market fit.
 
 The current product is credible enough for an early technical launch because it
@@ -480,20 +485,21 @@ explicit privacy boundary, Linux/macOS real-Chrome CI, and an honest comparison
 with established alternatives. Its strongest shareable object is the report,
 not the command surface.
 
-Two distribution blockers remain:
+The naming blocker is now resolved, leaving one release blocker:
 
-1. **The brand is crowded.** Homebrew already installs an unrelated `chroma`
-   executable, and ChromaDB's official documentation also uses a `chroma` CLI.
-   This creates search ambiguity and executable collisions before a developer
-   reaches the product. [Homebrew `chroma`](https://formulae.brew.sh/formula/chroma)
+1. **Resolved: the former brand was crowded.** Homebrew already installs an
+   unrelated `chroma` executable, and ChromaDB's official documentation also
+   uses a `chroma` CLI. The product and executable are now named `BugBaton` and
+   `bugbaton`; a September 3 check found no exact GitHub repository, npm package,
+   or Homebrew formula using that name. [Homebrew `chroma`](https://formulae.brew.sh/formula/chroma)
    and [ChromaDB CLI installation](https://docs.trychroma.com/cli/install)
-2. **The install path is pre-release.** There is no npm release yet, so the first
+2. **Open: the install path is pre-release.** There is no npm release yet, so the first
    experience requires a long GitHub-pinned `npm exec` command. That is useful for
    reproducibility but weak for copying from Reddit, Hacker News, or a README.
 
-Recommended launch order: choose a distinctive searchable product and executable
-name, publish a signed/tagged npm release, preserve the 30-second demo as the first
-command, then launch with one real report and one sentence about the handoff job.
+Recommended launch order: publish a signed/tagged npm release, preserve the
+30-second demo as the first command, then launch with one real report and one
+sentence about the handoff job.
 The repository should remain English-only for the international audience. A
 separate Korean community post can localize the explanation without introducing
 parallel in-repository copy.

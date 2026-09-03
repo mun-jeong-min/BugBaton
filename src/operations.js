@@ -44,7 +44,7 @@ export async function captureSnapshot(endpoint, paths, tabSelector, includeAll =
   const snapshot = { capturedAt: new Date().toISOString(), targetId: tab.id, url: redactUrl(tab.url), urlFingerprint: createHash("sha256").update(tab.url).digest("hex"), loaderId: result.loaderId, title: tab.title, nodes };
   const identityAfter = browserInstanceId(await browserVersion(endpoint));
   if (!identityBefore || identityBefore !== identityAfter) {
-    throw codedError("BROWSER_CHANGED_DURING_SNAPSHOT", "Chrome changed while the snapshot was being captured", { retryable: true, hint: "Reconnect to Chrome and run `chroma snapshot` again." });
+    throw codedError("BROWSER_CHANGED_DURING_SNAPSHOT", "Chrome changed while the snapshot was being captured", { retryable: true, hint: "Reconnect to Chrome and run `bugbaton snapshot` again." });
   }
   const binding = {
     capturedAt: snapshot.capturedAt,
@@ -66,21 +66,21 @@ async function resolveElement(cdp, paths, tab, reference, selector) {
   if (selector) {
     const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
     const { nodeIds } = await cdp.send("DOM.querySelectorAll", { nodeId: root.nodeId, selector });
-    if (!nodeIds.length) throw codedError("ELEMENT_NOT_FOUND", `No element matches selector ${JSON.stringify(selector)}`, { hint: "Run `chroma snapshot` or correct --selector." });
+    if (!nodeIds.length) throw codedError("ELEMENT_NOT_FOUND", `No element matches selector ${JSON.stringify(selector)}`, { hint: "Run `bugbaton snapshot` or correct --selector." });
     if (nodeIds.length > 1) throw codedError("ELEMENT_AMBIGUOUS", `Selector ${JSON.stringify(selector)} matches ${nodeIds.length} elements`, { exitCode: 2, hint: "Use a selector that matches exactly one element.", details: { matches: nodeIds.length } });
     return cdp.send("DOM.resolveNode", { nodeId: nodeIds[0] });
   }
-  if (!reference?.startsWith("@e")) throw codedError("INVALID_ELEMENT_REF", "Expected a snapshot reference such as @e1, or pass --selector", { exitCode: 2, hint: "Run `chroma snapshot` to obtain current refs." });
+  if (!reference?.startsWith("@e")) throw codedError("INVALID_ELEMENT_REF", "Expected a snapshot reference such as @e1, or pass --selector", { exitCode: 2, hint: "Run `bugbaton snapshot` to obtain current refs." });
   const snapshot = await readJson(snapshotFile(paths, tab.id));
-  if (!snapshot) throw codedError("SNAPSHOT_REQUIRED", "No snapshot exists for this tab", { hint: "Run `chroma snapshot` first." });
+  if (!snapshot) throw codedError("SNAPSHOT_REQUIRED", "No snapshot exists for this tab", { hint: "Run `bugbaton snapshot` first." });
   const liveIdentity = { endpoint: snapshot.endpoint, browserInstanceId: browserInstanceId(await browserVersion(snapshot.endpoint)) };
-  if (!snapshotIdentityMatches(snapshot, liveIdentity, cdp.url)) throw codedError("STALE_SNAPSHOT", "Snapshot reference belongs to a different Chrome session", { hint: "Run `chroma snapshot` again." });
+  if (!snapshotIdentityMatches(snapshot, liveIdentity, cdp.url)) throw codedError("STALE_SNAPSHOT", "Snapshot reference belongs to a different Chrome session", { hint: "Run `bugbaton snapshot` again." });
   const currentFingerprint = createHash("sha256").update(tab.url).digest("hex");
-  if (snapshot.targetId !== tab.id || snapshot.urlFingerprint !== currentFingerprint) throw codedError("STALE_SNAPSHOT", "Snapshot reference is stale because the selected tab navigated", { hint: "Run `chroma snapshot` again." });
+  if (snapshot.targetId !== tab.id || snapshot.urlFingerprint !== currentFingerprint) throw codedError("STALE_SNAPSHOT", "Snapshot reference is stale because the selected tab navigated", { hint: "Run `bugbaton snapshot` again." });
   const { frameTree } = await cdp.send("Page.getFrameTree");
-  if (snapshot.loaderId && snapshot.loaderId !== frameTree.frame?.loaderId) throw codedError("STALE_SNAPSHOT", "Snapshot reference is stale because the selected document reloaded", { hint: "Run `chroma snapshot` again." });
+  if (snapshot.loaderId && snapshot.loaderId !== frameTree.frame?.loaderId) throw codedError("STALE_SNAPSHOT", "Snapshot reference is stale because the selected document reloaded", { hint: "Run `bugbaton snapshot` again." });
   const node = snapshot.nodes.find((entry) => entry.ref === reference);
-  if (!node?.backendDOMNodeId) throw codedError("ELEMENT_REF_NOT_FOUND", `Unknown snapshot reference ${reference}`, { hint: "Run `chroma snapshot` again." });
+  if (!node?.backendDOMNodeId) throw codedError("ELEMENT_REF_NOT_FOUND", `Unknown snapshot reference ${reference}`, { hint: "Run `bugbaton snapshot` again." });
   return cdp.send("DOM.resolveNode", { backendNodeId: node.backendDOMNodeId });
 }
 
@@ -116,7 +116,7 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
       return { action, targetId: tab.id, url: redactUrl(tab.url), key };
     }
     const { object } = await resolveElement(cdp, paths, tab, reference, selector);
-    if (!object?.objectId) throw codedError("ELEMENT_DETACHED", "The target element is not available in the current document", { retryable: true, hint: "Run `chroma snapshot` and retry with a new ref." });
+    if (!object?.objectId) throw codedError("ELEMENT_DETACHED", "The target element is not available in the current document", { retryable: true, hint: "Run `bugbaton snapshot` and retry with a new ref." });
     let inputMode;
     if (action === "click") {
       const invocation = await cdp.send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function(){ this.scrollIntoView({block:'center', inline:'center'}); }", awaitPromise: true });
@@ -125,10 +125,10 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
       try {
         box = await cdp.send("DOM.getBoxModel", { objectId: object.objectId });
       } catch {
-        throw codedError("ELEMENT_NOT_INTERACTABLE", "The selected element has no clickable layout box", { hint: "Choose a visible element from a fresh `chroma snapshot`." });
+        throw codedError("ELEMENT_NOT_INTERACTABLE", "The selected element has no clickable layout box", { hint: "Choose a visible element from a fresh `bugbaton snapshot`." });
       }
       const quad = box.model?.border;
-      if (!Array.isArray(quad) || quad.length !== 8) throw codedError("ELEMENT_NOT_INTERACTABLE", "The selected element has no valid clickable bounds", { hint: "Choose a visible element from a fresh `chroma snapshot`." });
+      if (!Array.isArray(quad) || quad.length !== 8) throw codedError("ELEMENT_NOT_INTERACTABLE", "The selected element has no valid clickable bounds", { hint: "Choose a visible element from a fresh `bugbaton snapshot`." });
       const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4;
       const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4;
       const hitTest = await cdp.send("Runtime.callFunctionOn", {
@@ -170,12 +170,12 @@ export async function interact(endpoint, paths, action, { tabSelector, reference
 }
 
 function suppressBrowserActionCapture(cdp) {
-  return cdp.send("Runtime.evaluate", { expression: "globalThis.__chromaSuppressActionUntil = Date.now() + 500" });
+  return cdp.send("Runtime.evaluate", { expression: "globalThis.__bugbatonSuppressActionUntil = Date.now() + 500" });
 }
 
 function assertRuntimeInvocation(invocation, code, message) {
   if (!invocation?.exceptionDetails) return;
-  throw codedError(code, message, { hint: "Run `chroma snapshot` and choose an element whose role matches the action." });
+  throw codedError(code, message, { hint: "Run `bugbaton snapshot` and choose an element whose role matches the action." });
 }
 
 const KEY_CODES = { Enter: 13, Tab: 9, Escape: 27, Backspace: 8, Delete: 46, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39, Space: 32 };

@@ -1,15 +1,15 @@
-# Contributing to Chroma
+# Contributing to BugBaton
 
 Thanks for helping make local web diagnosis faster and more trustworthy.
 
-Chroma's promise is simple: reproduce once, close Chrome, and keep the evidence.
+BugBaton's promise is simple: pass the bug, not the browser.
 It is a local flight recorder for a browser bug a developer can reproduce but has
 not automated, preserving ordinary evidence files that can move between a person,
 shell, issue, or agent.
 
 ## Start with the product boundary
 
-Chroma is an observation-first diagnostics CLI with a few reproduction actions.
+BugBaton is an observation-first diagnostics CLI with a few reproduction actions.
 It is not a general browser automation framework. A strong contribution improves
 one of these properties:
 
@@ -48,7 +48,7 @@ browser.
 4. Record any platform-specific limitation instead of hiding a partial result.
 5. Keep human stdout concise and update the versioned JSON result at the same time.
 
-Bug reports are most useful with the Chroma version, Node/Chrome versions, exact
+Bug reports are most useful with the BugBaton version, Node/Chrome versions, exact
 command and exit code, the relevant JSON error code, and a minimal local page.
 Review reports before attaching them: screenshots, accessible names, titles, and
 console prose can contain secrets even though known credentials are redacted.

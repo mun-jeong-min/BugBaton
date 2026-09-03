@@ -1,16 +1,16 @@
 name: Bug report
-description: Report a reproducible Chroma failure without exposing private browser data
+description: Report a reproducible BugBaton failure without exposing private browser data
 title: "[Bug]: "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Chroma. Review every artifact before sharing it. Do not attach reports that contain private page content, screenshots, accessible names, URLs, or console prose.
+        Thanks for helping improve BugBaton. Review every artifact before sharing it. Do not attach reports that contain private page content, screenshots, accessible names, URLs, or console prose.
   - type: input
     id: version
     attributes:
-      label: Chroma version
+      label: BugBaton version
       placeholder: 0.1.0
     validations:
       required: true

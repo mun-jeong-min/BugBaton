@@ -49,6 +49,8 @@ jobs:
             chrome: /usr/bin/google-chrome
           - os: macos-latest
             chrome: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+          - os: windows-latest
+            chrome: C:\Program Files\Google\Chrome\Application\chrome.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5

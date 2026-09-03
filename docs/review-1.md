@@ -1,7 +1,7 @@
 # Implementation Review 1: Final Revalidation
 
 - Review date: 2026-09-02 (Asia/Seoul)
-- Scope: `src/**/*.js`, `bin/chroma.js`, `package.json`, `README.md`, and `test/e2e/chrome.test.js`
+- Scope: `src/**/*.js`, `bin/bugbaton.js`, `package.json`, `README.md`, and `test/e2e/chrome.test.js`
 - Method: read-only code review, unit and fixture tests, and real Chrome 152 E2E with an isolated profile
 - Fresh-eye review: findings from independent E2E and competitive-research audits were fixed and revalidated
 - References use symbols and test names rather than fragile line numbers. This record describes the final worktree reviewed before its release commit.
@@ -57,7 +57,7 @@ reload and browser binding, and incomplete cleanup proof.
 | ID | Final state | Evidence and remaining boundary |
 | --- | --- | --- |
 | I1: failed-network correlation | **Partial, non-blocking** | A request map attaches URL, method, duration, and initiator summary to transport failures. Real-browser E2E covers HTTP 503 and disconnect failures. Reports label an action within the preceding ten seconds as `basis: temporal`; redirect-chain normalization and stronger causal attribution remain future work. |
-| I2: causal doctor checks | **Resolved for MVP** | Doctor helpers independently check Chroma and Node, executable version, writable and private state, corruption, endpoint, instance identity, protocol, monitor readiness, event-store health, and profile isolation. The next action is derived from the causal failure. |
+| I2: causal doctor checks | **Resolved for MVP** | Doctor helpers independently check BugBaton and Node, executable version, writable and private state, corruption, endpoint, instance identity, protocol, monitor readiness, event-store health, and profile isolation. The next action is derived from the causal failure. |
 | I3: JSON and exit contract | **Resolved for MVP** | ADR, README, and implementation agree on exit meanings `0` through `3` and `error: null` on success. Stale snapshots, selector or tab ambiguity, output collision, remote policy, endpoint or startup failure, and monitor failure keep stable string codes, retryability, a recovery hint, and bounded details. Numeric CDP codes appear only in `details.protocolCode`. |
 | I4: invalid filters and command timeout | **Resolved** | `commandEvents` validates limits and time before execution. `CdpConnection` has typed pending and open timeouts with timer cleanup. |
 | I5: unbounded or corrupt event store | **Resolved for MVP** | The implementation has byte-bounded rotation, serialized append, write and drop health, corrupt-line cursors, restart-health inheritance, and sticky degradation. |

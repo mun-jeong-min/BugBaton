@@ -7,7 +7,7 @@ import { readJson, sessionPaths, snapshotFile, writeJson } from "../src/state.js
 import { snapshotIdentityMatches } from "../src/operations.js";
 
 test("writes private JSON state atomically", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "chroma-state-test-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "bugbaton-state-test-"));
   const file = sessionPaths(root).session;
   await writeJson(file, { endpoint: "http://127.0.0.1:9222" });
   assert.deepEqual(await readJson(file), { endpoint: "http://127.0.0.1:9222" });
@@ -15,7 +15,7 @@ test("writes private JSON state atomically", async () => {
 });
 
 test("snapshot state filenames do not expose target IDs", () => {
-  const file = snapshotFile(sessionPaths("/tmp/chroma"), "sensitive-target-id");
+  const file = snapshotFile(sessionPaths("/tmp/bugbaton"), "sensitive-target-id");
   assert.equal(file.includes("sensitive-target-id"), false);
   assert.match(path.basename(file), /^[a-f0-9]{20}\.json$/);
 });
@@ -32,11 +32,11 @@ test("snapshot refs are bound to endpoint and browser instance", () => {
 });
 
 test("invalid JSON state exposes a typed recovery error", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "chroma-invalid-state-"));
+  const root = await mkdtemp(path.join(os.tmpdir(), "bugbaton-invalid-state-"));
   const file = sessionPaths(root).session;
   await writeFile(file, "{broken", { mode: 0o600 });
   await assert.rejects(
     readJson(file),
-    (error) => error.code === "STATE_INVALID_JSON" && error.hint.includes("chroma doctor") && error.details.path === file,
+    (error) => error.code === "STATE_INVALID_JSON" && error.hint.includes("bugbaton doctor") && error.details.path === file,
   );
 });

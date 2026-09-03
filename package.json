@@ -1,10 +1,10 @@
 {
-  "name": "chroma-cdp",
+  "name": "bugbaton",
   "version": "0.1.0",
-  "description": "Reproduce a local Chrome bug once and keep a private, reviewable evidence bundle",
+  "description": "Capture a browser bug once and pass a private, verifiable evidence bundle",
   "type": "module",
   "bin": {
-    "chroma": "./bin/chroma.js"
+    "bugbaton": "./bin/bugbaton.js"
   },
   "files": [
     "bin",
@@ -27,20 +27,23 @@
   "engines": {
     "node": ">=22"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "check": "npm run lint && node --check bin/chroma.js && node --check src/cli.js && node --check src/monitor.js && npm test",
+    "check": "npm run lint && node --check bin/bugbaton.js && node --check src/cli.js && node --check src/monitor.js && npm test",
     "prepublishOnly": "npm run check",
     "test": "node --test test/*.test.js test/fixtures/*.test.mjs",
-    "test:e2e": "CHROMA_E2E=1 node --test test/e2e/*.test.js",
+    "test:e2e": "node --test test/e2e/*.test.js",
     "lint": "eslint bin src test"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mun-jeong-min/Chroma.git"
+    "url": "git+https://github.com/mun-jeong-min/BugBaton.git"
   },
-  "homepage": "https://github.com/mun-jeong-min/Chroma#readme",
-  "bugs": "https://github.com/mun-jeong-min/Chroma/issues",
+  "homepage": "https://github.com/mun-jeong-min/BugBaton#readme",
+  "bugs": "https://github.com/mun-jeong-min/BugBaton/issues",
   "devDependencies": {
     "eslint": "^10.9.1"
   }

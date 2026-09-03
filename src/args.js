@@ -24,6 +24,7 @@ export const COMMAND_OPTIONS = {
   network: { "--tab": "value", "--failed": "boolean", "--clear": "boolean", "--limit": "value", "--since": "value" },
   screenshot: { "--tab": "value", "--output": "value", "--full-page": "boolean" },
   report: { "--tab": "value", "--output": "value", "--no-screenshot": "boolean", "--title": "value", "--expected": "value", "--actual": "value" },
+  verify: {},
   version: {},
 };
 
@@ -64,7 +65,7 @@ export function parseArgs(argv) {
     }
     const [name, inline] = token.split(/=(.*)/s, 2);
     const kind = schema[name];
-    if (!kind) throw usageError(`Unknown option for ${command ?? "chroma"}: ${name}`);
+    if (!kind) throw usageError(`Unknown option for ${command ?? "bugbaton"}: ${name}`);
     const key = name.replace(/^-+/, "").replaceAll("-", "_");
     if (Object.hasOwn(options, key)) throw usageError(`Duplicate option: ${name}`);
     if (kind === "boolean") {

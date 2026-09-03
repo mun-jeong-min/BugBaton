@@ -4,7 +4,7 @@ Date: 2026-09-03<br>
 Environment: macOS (arm64), Node.js v26.0.0, npm 11.12.1<br>
 Browser: Google Chrome 152.0.7977.75, CDP protocol 1.3
 
-This record captures the latest local evidence for the Chroma MVP. No package was published and no external system was mutated.
+This record captures the latest local evidence for the BugBaton MVP. No package was published and no external system was mutated.
 
 ## Outcome
 
@@ -15,6 +15,8 @@ launch -> doctor -> tabs -> snapshot -> click -> fill -> press
        -> errors -> network --failed -> screenshot -> report -> stop
 
 capture -> manual click/input/submit trail -> report -> verified shutdown
+
+report directory -> verify schema/path/hash/receipt consistency without Chrome
 ```
 
 All CLI invocations in the E2E lane ran as separate processes and returned one schema-versioned JSON envelope. The background monitor therefore had to preserve evidence across invocations rather than relying on one in-memory test connection.
@@ -26,18 +28,23 @@ All CLI invocations in the E2E lane ran as separate processes and returned one s
 ```console
 $ npm run check
 eslint bin src test
-tests 48; pass 48; fail 0
+tests 54; pass 54; fail 0
 ```
 
-The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, the packaged demo server, committed-sample integrity, and a repository-wide guard against CJK writing in owned text and paths.
+The gate includes ESLint with a complexity rule, syntax probes,
+help/version/JSON/parser contracts, read-only doctor behavior, scoped clear
+cursors, event-store sticky health, redaction, private atomic state, fixture
+HTTP/transport behavior, the packaged demo server, committed-sample integrity,
+report tamper/path/symlink rejection, and a repository-wide guard against CJK
+writing in owned text and paths.
 
 ### Real Chrome E2E
 
 ```console
 $ npm run test:e2e
-✔ real Chrome completes the diagnosis and report workflow (13305.461042ms)
-✔ capture records manual actions, writes evidence, and stops its session
-✔ demo refuses an empty success claim and accepts a captured failure
+✔ real Chrome completes the diagnosis and report workflow (13400.42325ms)
+✔ capture records manual actions, writes evidence, and stops its session (5620.172ms)
+✔ demo refuses an empty success claim and accepts a captured failure (7261.429667ms)
 tests 3; pass 3; fail 0
 ```
 
@@ -57,6 +64,8 @@ End-to-end assertions include:
 - failed-request URL/method correlation and event-store cursor shape;
 - PNG signature and full-page screenshot output;
 - independently recomputed SHA-256 matching screenshot command/report metadata;
+- offline `verify` success for advanced, capture, evidence-incomplete demo, and
+  evidence-complete demo bundles, plus receipt/evidence-requirement consistency;
 - `report.json`, Markdown summary, and PNG from an atomic staging workflow;
 - one shared high-water boundary for report errors and failed-network sections;
 - sensitive query values and temporary fill text absent from state and textual report artifacts;
@@ -88,7 +97,7 @@ The same diagnostic implementation also passed two instances concurrently
 (workflow times 13327.176ms and 13024.821ms) before the positioning-only
 README/help edits. This proves dynamic ports, browser/session state, evidence,
 artifacts, and cleanup do not cross streams. A listener probe after the
-concurrent run found no Chrome/Chromium/Chroma CDP listener.
+concurrent run found no Chrome/Chromium/BugBaton listener.
 
 The public GitHub Actions run passed the complete quality matrix on Ubuntu
 (Node 22 and 24), macOS (Node 22), and Windows (Node 22). The real-Chrome E2E
@@ -96,18 +105,18 @@ lane also passed on both Ubuntu and macOS.
 
 ### Package/install smoke
 
-Final `npm pack --dry-run --json` succeeded with 28 package entries, an
-approximately 146 KiB tarball, and approximately 316 KiB of unpacked content.
+Final `npm pack --json` succeeded with 29 package entries, a 141,969-byte
+tarball, and 327,750 bytes of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 
 A final production-only local install into an isolated `/tmp` prefix succeeded
-in 125ms with one package and no runtime dependencies. The installed binary then
-passed `chroma --version` (`0.1.0`), `chroma fill --help`, and read-only
-`chroma doctor --json`. The temporary install was removed afterward.
+in 195ms with one package and no runtime dependencies. The installed binary then
+passed `bugbaton --version` (`0.1.0`), top-level help, read-only
+`bugbaton doctor --json`, and `bugbaton verify` against the committed sample.
 
 The packaged demo now separates bundle integrity from demonstration success. An
-empty `chroma demo --headless --deterministic --duration 1` run writes the
+empty `bugbaton demo --headless --deterministic --duration 1` run writes the
 JSON/Markdown/PNG bundle plus `capture-receipt.json`, verifies monitor and browser
 shutdown, then exits with `DEMO_EVIDENCE_INCOMPLETE`. A second real-Chrome run that
 clicked the intentional HTTP 503 control passed with at least one recorded action,
@@ -153,5 +162,6 @@ The manual report captured seven browser/runtime/console findings, two failed re
 1. Improve the report's explicitly low-confidence temporal correlation with stronger CDP initiator evidence.
 2. Add redirect-chain and duplicate-occurrence normalization; request durations and initiator locations are already recorded.
 3. Add contenteditable and select/combobox support only where fixtures prove the semantics; stdin fill is now available for secret values.
-4. Add Windows Chrome E2E; Windows discovery and the quality gate pass, but the real-browser lane remains unverified.
+4. Confirm the newly added Windows real-Chrome lane in public CI; local Windows
+   ACL inspection remains explicitly outside the POSIX-mode privacy check.
 5. Measure diagnosis time and report usefulness on representative open-source local apps before expanding automation verbs.

@@ -19,14 +19,14 @@ Observed on 2026-09-02 (Asia/Seoul):
 - A follow-up probe launched that exact executable in new headless mode with a
   temporary profile and an ephemeral loopback debugging port. `/json/version`
   succeeded with CDP protocol `1.3` and a browser WebSocket URL; `/json/list`
-  included the fixture as a `page` target titled `Chroma CDP fixture`.
+  included the fixture as a `page` target titled `BugBaton fixture`.
 - The same target listing also contained component-extension background pages,
   service workers, and `browser_ui` targets, even with a fresh profile. This is
   direct evidence that `tabs` should default to user-facing `page` targets and
   expose non-page targets only through an explicit option.
 
 That initial probe proved the installed Chrome could expose CDP and load the
-fixture. The later automated lane now also proves Chroma's own launch/connect
+fixture. The later automated lane now also proves BugBaton's own launch/connect
 and full diagnostic workflow on this environment; see the validation record.
 
 ## Test topology
@@ -98,12 +98,13 @@ Run commands against an explicit tab id when more than one page exists.
 | --- | --- | --- |
 | `snapshot` | Snapshot fixture tab | Output contains headings, button names, form label, status, and stable element references usable by actions. |
 | `click` | Click `Increment counter` | Counter becomes 1; command identifies the acted-on element. |
-| `fill` | Fill `Message` with `hello chroma` | Input value is exact, including spaces. |
-| `press` | Press Enter in `Message` | `Submitted: hello chroma` appears and status becomes submitted. |
+| `fill` | Fill `Message` with `hello bugbaton` | Input value is exact, including spaces. |
+| `press` | Press Enter in `Message` | `Submitted: hello bugbaton` appears and status becomes submitted. |
 | `errors` | Trigger console and runtime error buttons | Both deliberate messages appear with level/type, timestamp, tab id, and source location when Chrome provides it. |
 | `network --failed` | Trigger HTTP 503 and dropped connection | Output distinguishes HTTP failure (503) from transport failure (`loadingFailed`) and includes URL, method, timing, and error/status. |
 | `screenshot` | Capture fixture | PNG signature is valid, dimensions are nonzero, and the visible heading/status are present in a human-inspected sample. |
 | `report` | After interactions/failures | One bounded artifact summarizes page identity, snapshot, errors, failed requests, and screenshot path without leaking cookies or authorization headers. |
+| `verify` | After receiving a report directory | Works without Chrome; rejects incompatible headers, unsafe paths, invalid metadata, changed attachments, and attachment symlinks; reports receipt consistency and does not claim producer authenticity. |
 
 ### 4. Shell and JSON contracts
 
@@ -144,6 +145,9 @@ For every MVP command:
 - Actions never silently fall back from an explicit tab id to another tab.
 - Reports and screenshots are written only to the requested local path and are
   never uploaded.
+- `verify` accepts only basename attachment paths and regular files, checks
+  declared sizes and SHA-256 hashes, and states that those checks do not prove
+  who created the bundle.
 
 ## Evidence record
 

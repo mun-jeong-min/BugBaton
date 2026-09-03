@@ -107,7 +107,7 @@ server.listen(port, host, () => {
   const address = server.address();
   const actualPort = typeof address === 'object' && address ? address.port : port;
   const url = `http://${host}:${actualPort}`;
-  console.log(JSON.stringify({ fixture: 'chroma-cdp', pid: process.pid, url }));
+  console.log(JSON.stringify({ fixture: 'bugbaton', pid: process.pid, url }));
 });
 
 function close() {

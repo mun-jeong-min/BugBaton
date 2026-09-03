@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title description">
-  <title id="title">Chroma turns one browser reproduction into a durable evidence bundle</title>
-  <desc id="description">A terminal starts capture, a developer reproduces an HTTP failure, and Chroma writes a timeline, diagnostics, screenshot, and verified shutdown receipt.</desc>
+  <title id="title">BugBaton turns one browser reproduction into a durable evidence bundle</title>
+  <desc id="description">A terminal starts capture, a developer reproduces an HTTP failure, and BugBaton writes a timeline, diagnostics, screenshot, and verified shutdown receipt.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1020"/>
@@ -23,8 +23,8 @@
   <circle cx="1110" cy="-30" r="250" fill="#7c3aed" opacity="0.12"/>
   <circle cx="160" cy="690" r="300" fill="#2563eb" opacity="0.1"/>
 
-  <text x="64" y="72" fill="#a5b4fc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">CHROMA CDP</text>
-  <text x="64" y="121" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="39" font-weight="750">Reproduce once. Close Chrome. Keep the evidence.</text>
+  <text x="64" y="72" fill="#a5b4fc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">BUGBATON CDP</text>
+  <text x="64" y="121" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="39" font-weight="750">Pass the bug, not the browser.</text>
   <text x="64" y="157" fill="#aeb8cc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20">One local bug reproduction becomes a private, reviewable bundle.</text>
 
   <g filter="url(#shadow)">
@@ -34,7 +34,7 @@
     <circle cx="108" cy="226" r="6" fill="#fbbf24"/>
     <circle cx="128" cy="226" r="6" fill="#4ade80"/>
     <text x="150" y="232" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">terminal</text>
-    <text x="88" y="286" fill="#c4b5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">$ chroma demo</text>
+    <text x="88" y="286" fill="#c4b5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">$ bugbaton demo</text>
     <text x="88" y="326" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Demo ready on loopback</text>
     <text x="88" y="354" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Capturing...</text>
     <rect x="88" y="387" width="196" height="30" rx="15" fill="#312e81"/>

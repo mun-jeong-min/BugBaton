@@ -9,11 +9,11 @@ test("package surface and README stay aligned with the public CLI", async () => 
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   const contributing = await readFile(new URL("../CONTRIBUTING.md", import.meta.url), "utf8");
   const cli = await readFile(new URL("../src/cli.js", import.meta.url), "utf8");
-  const bin = new URL("../bin/chroma.js", import.meta.url);
+  const bin = new URL("../bin/bugbaton.js", import.meta.url);
   const binStat = await stat(bin);
 
-  assert.equal(packageJson.bin.chroma, "./bin/chroma.js");
-  assert.equal(packageJson.description, "Reproduce a local Chrome bug once and keep a private, reviewable evidence bundle");
+  assert.equal(packageJson.bin.bugbaton, "./bin/bugbaton.js");
+  assert.equal(packageJson.description, "Capture a browser bug once and pass a private, verifiable evidence bundle");
   assert.equal(packageJson.dependencies, undefined, "the MVP must remain zero-runtime-dependency");
   assert.equal(packageJson.scripts.prepublishOnly, "npm run check");
   assert.ok(packageJson.files.includes("CONTRIBUTING.md"));
@@ -32,7 +32,7 @@ test("package surface and README stay aligned with the public CLI", async () => 
   assert.match(contributing, /not a general browser automation framework/i);
   assert.match(contributing, /npm run test:e2e/);
   for (const surface of [readme, contributing, cli]) {
-    assert.match(surface, /reproduce once[,.]?\s+(?:close Chrome|then write a report)/i,
+    assert.match(surface, /pass the bug, not the browser/i,
       "public surfaces should retain the core product promise");
   }
 });
