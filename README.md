@@ -48,7 +48,7 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#15c4ce0 -- bugbaton demo
+npm exec --yes --package=github:mun-jeong-min/BugBaton#d594c18 -- bugbaton demo
 ```
 
 Follow the three steps in the Chrome window, then press Enter. BugBaton captures
@@ -79,7 +79,7 @@ window. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#15c4ce0 -- \
+npm exec --yes --package=github:mun-jeong-min/BugBaton#d594c18 -- \
   bugbaton capture --url http://127.0.0.1:3000 \
   --title "Checkout fails after Save" \
   --expected "The order is saved." \
@@ -159,7 +159,7 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/BugBaton#15c4ce0
+npm install --global github:mun-jeong-min/BugBaton#d594c18
 bugbaton --version
 ```
 
