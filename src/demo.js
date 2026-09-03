@@ -60,6 +60,30 @@ document.querySelector("#note-form").addEventListener("submit", (event) => {
   status.textContent = "Submitted the note. Chroma stores its length, not its value.";
 });`;
 
+export const DEMO_EVIDENCE_REQUIREMENT = Object.freeze({
+  id: "demo-minimum-v1",
+  description: "At least one recorded action, browser error, and failed or HTTP-error request.",
+  minimums: Object.freeze({ actions: 1, errors: 1, failedNetwork: 1 }),
+});
+
+export function assessDemoEvidence(summary) {
+  const observed = {
+    actions: summary.actions,
+    errors: summary.errors,
+    failedNetwork: summary.failedNetwork,
+  };
+  const checks = Object.fromEntries(Object.entries(DEMO_EVIDENCE_REQUIREMENT.minimums).map(([name, minimum]) => [
+    name,
+    { minimum, observed: observed[name], met: observed[name] >= minimum },
+  ]));
+  return {
+    ...DEMO_EVIDENCE_REQUIREMENT,
+    status: Object.values(checks).every((check) => check.met) ? "met" : "not-met",
+    observed,
+    checks,
+  };
+}
+
 function send(response, status, contentType, body) {
   response.writeHead(status, {
     "cache-control": "no-store",

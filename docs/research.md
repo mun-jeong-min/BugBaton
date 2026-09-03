@@ -1,6 +1,6 @@
 # Competitive Research and Product Positioning
 
-- Research date: 2026-09-02 (Asia/Seoul)
+- Research date: 2026-09-03 (Asia/Seoul)
 - Scope: real Chrome and CDP connections, shell UX, coding-agent use, and local web-app diagnosis
 - Method: official documentation and repositories were preferred. A community CLI's own repository README is treated as the primary source for claims about that project.
 - Freshness: this is a snapshot of the linked sources on the research date. Fast-moving projects should be checked again before a release.
@@ -126,7 +126,7 @@ without a fast first experience and a sharply visible artifact payoff.
 
 **Observation:** ProofShot packages actions, screenshots, video, console output,
 and server logs into a reviewable pull-request artifact. Its March 2026 Show HN
-launch received 161 points and 106 comments, and the repository had 855 stars at
+launch received 161 points and 106 comments, and the repository had 856 stars at
 the September recheck. Discussion repeatedly challenged it to explain why
 Playwright CLI was insufficient; positive reactions centered on reviewable proof
 and before/after evidence rather than browser control. [Show HN discussion](https://news.ycombinator.com/item?id=47499672)
@@ -456,6 +456,47 @@ The choice guide should be honest:
 The demo is deliberately not a mock report: it starts the same monitor, Chrome,
 manual-action capture, report, and ownership-safe shutdown path used on a real
 local app.
+
+The demo must also prove its own promise. A September 2026 Hacker News discussion
+about browser-agent CLIs identified the harder evaluation problem as separating a
+real behavioral verification from an agent merely reaching a page and reporting
+success. Chroma therefore treats a demo with no action, browser error, or failed
+request as `DEMO_EVIDENCE_INCOMPLETE`, retains the report, closes Chrome, and exits
+unsuccessfully instead of printing `Demo complete`. [Hacker News browser-agent
+CLI discussion](https://news.ycombinator.com/item?id=46901233)
+
+### Distribution Readiness
+
+The problem language has demonstrated reach: BrowserTools MCP had roughly 7,300
+GitHub stars at the September 2026 recheck, while ProofShot's proof-artifact
+launch earned 161 Hacker News points. Reddit developers repeatedly describe the
+same manual handoff of screenshots, console logs, network failures, and reproduction
+steps. These are qualitative signals of a real job, not evidence that Chroma has
+product-market fit.
+
+The current product is credible enough for an early technical launch because it
+has a self-contained demo, a real sample artifact, no runtime dependencies, an
+explicit privacy boundary, Linux/macOS real-Chrome CI, and an honest comparison
+with established alternatives. Its strongest shareable object is the report,
+not the command surface.
+
+Two distribution blockers remain:
+
+1. **The brand is crowded.** Homebrew already installs an unrelated `chroma`
+   executable, and ChromaDB's official documentation also uses a `chroma` CLI.
+   This creates search ambiguity and executable collisions before a developer
+   reaches the product. [Homebrew `chroma`](https://formulae.brew.sh/formula/chroma)
+   and [ChromaDB CLI installation](https://docs.trychroma.com/cli/install)
+2. **The install path is pre-release.** There is no npm release yet, so the first
+   experience requires a long GitHub-pinned `npm exec` command. That is useful for
+   reproducibility but weak for copying from Reddit, Hacker News, or a README.
+
+Recommended launch order: choose a distinctive searchable product and executable
+name, publish a signed/tagged npm release, preserve the 30-second demo as the first
+command, then launch with one real report and one sentence about the handoff job.
+The repository should remain English-only for the international audience. A
+separate Korean community post can localize the explanation without introducing
+parallel in-repository copy.
 
 ## Primary Sources
 

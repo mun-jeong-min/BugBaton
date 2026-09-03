@@ -1,6 +1,6 @@
 # Validation record
 
-Date: 2026-09-02<br>
+Date: 2026-09-03<br>
 Environment: macOS (arm64), Node.js v26.0.0, npm 11.12.1<br>
 Browser: Google Chrome 152.0.7977.75, CDP protocol 1.3
 
@@ -26,7 +26,7 @@ All CLI invocations in the E2E lane ran as separate processes and returned one s
 ```console
 $ npm run check
 eslint bin src test
-tests 47; pass 47; fail 0
+tests 48; pass 48; fail 0
 ```
 
 The gate includes ESLint with a complexity rule, syntax probes, help/version/JSON/parser contracts, read-only doctor behavior, scoped clear cursors, event-store sticky health, redaction, private atomic state, fixture HTTP/transport behavior, the packaged demo server, committed-sample integrity, and a repository-wide guard against CJK writing in owned text and paths.
@@ -36,8 +36,9 @@ The gate includes ESLint with a complexity rule, syntax probes, help/version/JSO
 ```console
 $ npm run test:e2e
 ✔ real Chrome completes the diagnosis and report workflow (13305.461042ms)
-✔ capture records manual actions, writes evidence, and stops its session (5569.706208ms)
-tests 2; pass 2; fail 0
+✔ capture records manual actions, writes evidence, and stops its session
+✔ demo refuses an empty success claim and accepts a captured failure
+tests 3; pass 3; fail 0
 ```
 
 End-to-end assertions include:
@@ -79,6 +80,9 @@ End-to-end assertions include:
   owned-browser shutdown.
 - bounded title/expected/actual claim fields rendered above the evidence timeline,
   with oversize claims rejected before session state is created.
+- the packaged demo refuses a false-positive success when no action-to-failure
+  evidence was recorded, preserves the incomplete report, and still verifies
+  shutdown; a captured HTTP 503 action satisfies the explicit demo requirement.
 
 The same diagnostic implementation also passed two instances concurrently
 (workflow times 13327.176ms and 13024.821ms) before the positioning-only
@@ -102,11 +106,12 @@ in 125ms with one package and no runtime dependencies. The installed binary then
 passed `chroma --version` (`0.1.0`), `chroma fill --help`, and read-only
 `chroma doctor --json`. The temporary install was removed afterward.
 
-The packaged `chroma demo --headless --deterministic --duration 1` path also
-completed against a real Chrome, wrote JSON/Markdown/PNG plus
-`capture-receipt.json`, and verified monitor and browser shutdown. The normal
-interactive demo presents three safe actions so the resulting report contains a
-visible click-to-failure trail.
+The packaged demo now separates bundle integrity from demonstration success. An
+empty `chroma demo --headless --deterministic --duration 1` run writes the
+JSON/Markdown/PNG bundle plus `capture-receipt.json`, verifies monitor and browser
+shutdown, then exits with `DEMO_EVIDENCE_INCOMPLETE`. A second real-Chrome run that
+clicked the intentional HTTP 503 control passed with at least one recorded action,
+browser error, and failed request.
 
 ### Manual dogfood loop
 

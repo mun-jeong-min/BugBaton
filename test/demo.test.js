@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { startDemoServer } from "../src/demo.js";
+import { assessDemoEvidence, DEMO_EVIDENCE_REQUIREMENT, startDemoServer } from "../src/demo.js";
+
+test("demo evidence requires a visible action-to-failure chain", () => {
+  const empty = assessDemoEvidence({ actions: 0, errors: 0, failedNetwork: 0 });
+  assert.equal(empty.id, DEMO_EVIDENCE_REQUIREMENT.id);
+  assert.equal(empty.status, "not-met");
+  assert.equal(empty.checks.actions.met, false);
+  assert.equal(empty.checks.errors.met, false);
+  assert.equal(empty.checks.failedNetwork.met, false);
+
+  const captured = assessDemoEvidence({ actions: 1, errors: 1, failedNetwork: 1 });
+  assert.equal(captured.status, "met");
+  assert.ok(Object.values(captured.checks).every((check) => check.met));
+});
 
 test("self-contained demo serves one intentional local failure", async () => {
   const demo = await startDemoServer();

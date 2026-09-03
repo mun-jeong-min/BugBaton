@@ -6,6 +6,9 @@
 
 **Reproduce once. Close Chrome. Keep the evidence.**
 
+**Because the next person should not have to reproduce the same browser bug just
+to see what happened.**
+
 Chroma CDP is a zero-dependency local flight recorder for a browser bug you can
 reproduce but have not automated yet. One command opens an isolated Chrome,
 records a value-free action trail, console errors, failed requests, page state,
@@ -39,6 +42,9 @@ npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- chroma demo
 
 Follow the three steps in the Chrome window, then press Enter. Chroma captures
 the report and safely closes only the browser process it launched and verified.
+If you end the demo before it records at least one action, browser error, and
+failed request, it returns `DEMO_EVIDENCE_INCOMPLETE` instead of claiming the
+demo succeeded. The incomplete report is retained and Chrome is still closed.
 
 ```console
 $ chroma demo
@@ -52,7 +58,8 @@ Chrome session stopped: yes
 
 `capture` picks a free loopback CDP port and a unique report path automatically,
 so the same command can be run again. Use `--duration 30` instead of Enter for
-scripts and coding agents. Every command also has a versioned `--json` envelope.
+scripts and coding agents, and make sure they perform the demo action during that
+window. Every command also has a versioned `--json` envelope.
 
 ![The page screenshot attached to the real sample report](docs/example-report/screenshot.png)
 
@@ -71,7 +78,7 @@ npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- \
 The optional claim appears above the evidence timeline, so a recipient sees what
 was expected, what happened, and then the browser evidence supporting it.
 
-> **Pre-release 0.1.0:** install directly from GitHub for now. The full local
+> **Pre-release:** install directly from GitHub for now. The full local
 > lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
 > Linux and macOS plus the quality gate on Windows; the first npm release is next.
 

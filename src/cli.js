@@ -13,7 +13,7 @@ import { readJson, sessionPaths, stateRoot, writeJson } from "./state.js";
 import { redactUrl } from "./redact.js";
 import { eventStoreHealth } from "./event-health.js";
 import { codedError, errorPayload, safeSingleLine } from "./errors.js";
-import { startDemoServer } from "./demo.js";
+import { assessDemoEvidence, startDemoServer } from "./demo.js";
 
 const VERSION = "0.1.0";
 const MONITOR = fileURLToPath(new URL("./monitor.js", import.meta.url));
@@ -465,7 +465,7 @@ async function waitForCapture(durationSeconds) {
   });
 }
 
-async function commandCapture(parsed, paths) {
+async function commandCapture(parsed, paths, context = {}) {
   requirePositionals(parsed, 0, 0, COMMAND_HELP.capture);
   const duration = captureDuration(parsed.options.duration);
   reportClaim(parsed.options);
@@ -480,7 +480,7 @@ async function commandCapture(parsed, paths) {
   try {
     launched = await commandLaunch(captureArgs, paths, { captureActions: true });
     endedBy = await waitForCapture(duration);
-    report = await commandReport(captureArgs, paths, launched.endpoint);
+    report = await commandReport(captureArgs, paths, launched.endpoint, context);
   } finally {
     if (launched) stopped = await commandStop({ ...captureArgs, positionals: [] }, paths);
   }
@@ -490,6 +490,7 @@ async function commandCapture(parsed, paths) {
       completedAt: new Date().toISOString(),
       endedBy,
       bundleStatus: report.status,
+      ...(report.evidenceRequirement ? { evidenceRequirement: report.evidenceRequirement } : {}),
       sessionShutdown: {
         complete: stopped.stopped,
         monitorStopped: stopped.monitor.stopped,
@@ -524,8 +525,20 @@ async function commandDemo(parsed, paths) {
         ...parsed.options,
         url: demo.url,
       },
-    }, paths);
-    return { ...capture, demo: { url: demo.url, localOnly: true } };
+    }, paths, { assessEvidence: assessDemoEvidence });
+    if (capture.report.evidenceRequirement?.status !== "met") {
+      const { actions, errors, failedNetwork } = capture.report.summary;
+      throw codedError(
+        "DEMO_EVIDENCE_INCOMPLETE",
+        `Demo ended without the promised evidence (${actions} actions, ${errors} errors, ${failedNetwork} failed requests). The report was kept at ${capture.report.path} and Chrome was closed. Run it again and complete the HTTP 503 step before ending capture.`,
+        {
+          retryable: true,
+          hint: "Run `chroma demo` again, complete at least the HTTP 503 step, then end the capture.",
+          details: { reportPath: capture.report.path, evidenceRequirement: capture.report.evidenceRequirement, sessionShutdown: capture.receipt?.sessionShutdown ?? null },
+        },
+      );
+    }
+    return { ...capture, demo: { url: demo.url, localOnly: true, evidenceRequirement: capture.report.evidenceRequirement } };
   } finally {
     await demo.close();
   }
@@ -644,7 +657,7 @@ function buildTimeline(actions, errors, network) {
   return [...actionEntries, ...findingEntries].sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
 }
 
-function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, claim, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor }) {
+function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, claim, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor, evidenceRequirement }) {
   const observation = buildReportObservation(monitor, tab, eventCursor, monitorRunning);
   const partial = !monitorRunning || !observation.startedAt || Object.values(sections).some((section) => section.status === "partial");
   return {
@@ -657,6 +670,7 @@ function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session,
     connection: buildReportConnection(session, endpoint),
     tab: { id: tab.id, title: tab.title, url: redactUrl(tab.url) },
     claim,
+    ...(evidenceRequirement ? { evidenceRequirement } : {}),
     observation,
     redaction: { policy: "mandatory-v1", appliedBeforePersistence: monitor?.redactionPolicy === "mandatory-v1", urlCredentials: true, sensitiveQueryValues: true, authorizationLikeText: true, inputValuesInReport: true, warning: "Screenshots and accessible names may still contain sensitive content; review before sharing." },
     sections,
@@ -671,7 +685,7 @@ function buildReportManifest({ generatedAt, completedAt, endpoint, tab, session,
   };
 }
 
-async function commandReport(parsed, paths, endpoint) {
+async function commandReport(parsed, paths, endpoint, context = {}) {
   const generatedAt = new Date().toISOString();
   const claim = reportClaim(parsed.options);
   const outputDir = path.resolve(parsed.options.output ?? `chroma-report-${generatedAt.replaceAll(":", "-").replace(".", "-")}-${process.pid}`);
@@ -747,12 +761,15 @@ async function commandReport(parsed, paths, endpoint) {
     const monitorRunning = monitor ? await pidAlive(monitor.pid) : false;
     const completedAt = new Date().toISOString();
     const timeline = buildTimeline(actions, errors, network);
-    const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, claim, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor });
+    const summary = { errors: errors.length, failedNetwork: network.length, actions: actions.length, snapshotNodes: snapshot.nodes.length };
+    const evidenceRequirement = context.assessEvidence?.(summary) ?? null;
+    const report = buildReportManifest({ generatedAt, completedAt, endpoint, tab, session, monitor, monitorRunning, version, claim, sections, snapshot, errors, network, actions, timeline, screenshot, eventCursor: evidenceLog.cursor, evidenceRequirement });
     await writeFile(path.join(stagingDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`, { flag: "wx", mode: 0o600 });
-    const markdown = `# Chroma diagnostic report\n\n- Bundle status: **${report.status}**\n- Observation coverage: **best effort**\n- Complete since navigation: **no**\n- Generated: ${report.generatedAt}\n\n${reportClaimMarkdown(claim)}Page: **${markdownInline(tab.title || "(untitled)")}**\n\nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
+    const evidenceLine = evidenceRequirement ? `- Demo evidence requirement: **${evidenceRequirement.status}** (${evidenceRequirement.description})\n` : "";
+    const markdown = `# Chroma diagnostic report\n\n- Bundle status: **${report.status}**\n${evidenceLine}- Observation coverage: **best effort**\n- Complete since navigation: **no**\n- Generated: ${report.generatedAt}\n\n${reportClaimMarkdown(claim)}Page: **${markdownInline(tab.title || "(untitled)")}**\n\nURL: \`${markdownInline(report.tab.url)}\`\n\n- Observed errors/warnings: ${errors.length}\n- Failed/HTTP-error requests: ${network.length}\n- Recorded reproduction actions: ${actions.length}\n- Accessibility nodes: ${snapshot.nodes.length}\n- Screenshot: ${report.screenshot ?? "not captured"}\n- Evidence boundary: ${evidenceLog.cursor.id}\n- Observation monitor at report boundary: ${monitorRunning ? `running since ${monitor.startedAt}` : "not running; evidence is partial"}\n\n## Reproduction timeline\n\n${reportTimelineMarkdown(timeline)}\n\n> Observation starts after \`chroma launch\`, \`chroma connect\`, or \`chroma capture\`, so the bundle can be structurally complete without claiming gap-free browser history. A \`capture-receipt.json\` file records verified shutdown for one-command captures. Temporal proximity does not prove causality. Screenshots and accessible names may contain sensitive page content; review before sharing.\n`;
     await writeFile(path.join(stagingDir, "README.md"), markdown, { flag: "wx", mode: 0o600 });
     await rename(stagingDir, outputDir);
-    return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary: { errors: errors.length, failedNetwork: network.length, actions: actions.length, snapshotNodes: snapshot.nodes.length } };
+    return { path: outputDir, status: report.status, boundaryId: evidenceLog.cursor.id, files: ["report.json", "README.md", ...(screenshot ? ["screenshot.png"] : [])], warning: "Screenshots and accessible names may contain sensitive page content; review before sharing.", summary, evidenceRequirement };
   } catch (error) {
     await rm(stagingDir, { recursive: true, force: true });
     throw error;

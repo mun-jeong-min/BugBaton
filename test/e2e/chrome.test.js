@@ -23,7 +23,7 @@ function traceTiming(label, startedAt) {
 }
 
 function processLabel(executable, args) {
-  const commands = new Set(["doctor", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]);
+  const commands = new Set(["doctor", "demo", "capture", "launch", "connect", "stop", "tabs", "snapshot", "click", "fill", "press", "errors", "network", "screenshot", "report", "version"]);
   return `${executable} ${args.find((argument) => commands.has(argument)) ?? args[0] ?? ""}`;
 }
 
@@ -887,6 +887,79 @@ test("capture records manual actions, writes evidence, and stops its session", {
     if (monitorPid) await stopOwnedProcessGroup(monitorPid);
     if (chromePid) await stopOwnedProcessGroup(chromePid);
     await stopFixture(fixture);
+    await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});
+
+test("demo refuses an empty success claim and accepts a captured failure", {
+  skip: RUN_REAL_CHROME ? false : "set CHROMA_E2E=1 to run the real-Chrome lane",
+  timeout: 30_000,
+}, async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "chroma-demo-e2e-"));
+  const emptyStateDir = join(temporaryRoot, "empty-state");
+  const emptyProfileDir = join(temporaryRoot, "empty-profile");
+  const emptyReportDir = join(temporaryRoot, "empty-report");
+  const capturedStateDir = join(temporaryRoot, "captured-state");
+  const capturedProfileDir = join(temporaryRoot, "captured-profile");
+  const capturedReportDir = join(temporaryRoot, "captured-report");
+  const ownedPids = new Set();
+
+  try {
+    const emptyArgs = [CLI, "--state-dir", emptyStateDir, "--json", "demo", "--headless", "--deterministic", "--profile", emptyProfileDir, "--duration", "1", "--output", emptyReportDir];
+    if (process.env.CHROME_PATH) emptyArgs.push("--chrome", process.env.CHROME_PATH);
+    const emptyResult = await runProcess(process.execPath, emptyArgs, { timeout: 20_000 });
+    assert.equal(emptyResult.code, 1, emptyResult.stderr);
+    const emptyEnvelope = JSON.parse(emptyResult.stdout);
+    assert.equal(emptyEnvelope.error.code, "DEMO_EVIDENCE_INCOMPLETE");
+    assert.equal(emptyEnvelope.error.retryable, true);
+    assert.equal(emptyEnvelope.error.details.reportPath, emptyReportDir);
+    assert.equal(emptyEnvelope.error.details.evidenceRequirement.status, "not-met");
+    assert.equal(emptyEnvelope.error.details.sessionShutdown.complete, true);
+    const emptyReport = JSON.parse(await readFile(join(emptyReportDir, "report.json"), "utf8"));
+    assert.equal(emptyReport.status, "complete", "bundle integrity and demo evidence are separate claims");
+    assert.equal(emptyReport.evidenceRequirement.status, "not-met");
+    assert.match(await readFile(join(emptyReportDir, "README.md"), "utf8"), /Demo evidence requirement: \*\*not-met\*\*/);
+
+    const capturedArgs = [CLI, "--state-dir", capturedStateDir, "--json", "demo", "--headless", "--deterministic", "--profile", capturedProfileDir, "--duration", "2", "--output", capturedReportDir];
+    if (process.env.CHROME_PATH) capturedArgs.push("--chrome", process.env.CHROME_PATH);
+    const capturedPromise = runProcess(process.execPath, capturedArgs, { timeout: 20_000 });
+    const session = await poll(
+      "demo capture session",
+      () => readOptionalJson(join(capturedStateDir, "session.json")),
+      (value) => value?.captureActions === true,
+      15_000,
+    );
+    ownedPids.add(session.chromePid);
+    const monitor = await poll(
+      "demo monitor readiness",
+      () => readOptionalJson(join(capturedStateDir, "monitor.json")),
+      (value) => value?.sessionId === session.sessionId && value?.readyAt,
+    );
+    ownedPids.add(monitor.pid);
+    const tab = await poll(
+      "demo tab",
+      async () => (await listTabs(session.endpoint)).find((candidate) => candidate.title === "Chroma capture demo"),
+      Boolean,
+    );
+    await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
+      await cdp.send("Runtime.enable");
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#request-failure').click()" });
+      await delay(500);
+    });
+
+    const capturedResult = await capturedPromise;
+    assert.equal(capturedResult.code, 0, capturedResult.stderr);
+    const capturedEnvelope = JSON.parse(capturedResult.stdout);
+    assert.equal(capturedEnvelope.data.report.evidenceRequirement.status, "met");
+    assert.equal(capturedEnvelope.data.receipt.evidenceRequirement.status, "met");
+    assert.equal(capturedEnvelope.data.demo.evidenceRequirement.status, "met");
+    assert.ok(capturedEnvelope.data.report.summary.actions >= 1);
+    assert.ok(capturedEnvelope.data.report.summary.errors >= 1);
+    assert.ok(capturedEnvelope.data.report.summary.failedNetwork >= 1);
+    assert.equal(capturedEnvelope.data.receipt.sessionShutdown.complete, true);
+    assert.match(await readFile(join(capturedReportDir, "README.md"), "utf8"), /Demo evidence requirement: \*\*met\*\*/);
+  } finally {
+    for (const pid of ownedPids) await stopOwnedProcessGroup(pid);
     await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
