@@ -76,7 +76,7 @@ reload and browser binding, and incomplete cleanup proof.
 
 1. Extend redirect and duplicate normalization, and improve confidence labels for action-to-failure correlation.
 2. Classify Chrome startup and profile failures more precisely by platform.
-3. Run the same real-browser lane on Linux and Windows.
+3. Maintain the real-browser lane on Linux, macOS, and Windows as Chrome changes.
 
 ## Structured Findings
 

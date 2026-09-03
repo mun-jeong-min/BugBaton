@@ -48,7 +48,7 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#d594c18 -- bugbaton demo
+npm exec --yes --package=github:mun-jeong-min/BugBaton#6e17333 -- bugbaton demo
 ```
 
 Follow the three steps in the Chrome window, then press Enter. BugBaton captures
@@ -79,7 +79,7 @@ window. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#d594c18 -- \
+npm exec --yes --package=github:mun-jeong-min/BugBaton#6e17333 -- \
   bugbaton capture --url http://127.0.0.1:3000 \
   --title "Checkout fails after Save" \
   --expected "The order is saved." \
@@ -91,7 +91,7 @@ was expected, what happened, and then the browser evidence supporting it.
 
 > **Pre-release:** install directly from GitHub for now. The full local
 > lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
-> Linux and macOS plus the quality gate on Windows; the first npm release is next.
+> Linux, macOS, and Windows; the first npm release is next.
 
 ## Why this instead of another browser controller?
 
@@ -150,7 +150,7 @@ browser-instance binding prevents evidence and refs from crossing sessions.
 
 - Node.js 22 or newer (uses the built-in WebSocket client)
 - Google Chrome, Chromium, or Chrome Canary
-- macOS or Linux today; Windows Chrome discovery is implemented but not yet end-to-end verified
+- macOS, Linux, or Windows; public CI runs the real-Chrome lane on all three
 
 No runtime npm dependencies are required.
 
@@ -159,7 +159,7 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/BugBaton#d594c18
+npm install --global github:mun-jeong-min/BugBaton#6e17333
 bugbaton --version
 ```
 
@@ -348,7 +348,9 @@ CDP is browser-level control. Anyone who can reach the endpoint may read page co
 - `press` supports common navigation/editing keys and single characters, not full keyboard chord syntax.
 - `fill` targets HTML input/textarea value semantics; contenteditable and file uploads are not supported.
 - Report screenshots and accessible names require manual privacy review.
-- Windows and remote endpoint workflows need broader E2E coverage.
+- Remote endpoint workflows need broader E2E coverage; Windows state diagnosis
+  reports that platform ACLs are not inspected instead of presenting POSIX mode
+  bits as a privacy guarantee.
 
 ## Development and verification
 
@@ -370,6 +372,6 @@ and evidence expected in a change.
 
 This is an MVP under active validation. The next priorities are an npm release,
 independent first-use testing, higher-confidence action/failure correlation,
-redirect and duplicate normalization, and Windows real-browser E2E.
+and redirect and duplicate normalization.
 Contributions that sharpen diagnosis or evidence handoff are more valuable than
 adding broad automation verbs.

@@ -100,14 +100,15 @@ README/help edits. This proves dynamic ports, browser/session state, evidence,
 artifacts, and cleanup do not cross streams. A listener probe after the
 concurrent run found no Chrome/Chromium/BugBaton listener.
 
-The public GitHub Actions run passed the complete quality matrix on Ubuntu
-(Node 22 and 24), macOS (Node 22), and Windows (Node 22). The real-Chrome E2E
-lane also passed on both Ubuntu and macOS.
+The [public GitHub Actions run](https://github.com/mun-jeong-min/BugBaton/actions/runs/33706985107)
+passed the complete quality matrix on Ubuntu (Node 22 and 24), macOS (Node 22),
+and Windows (Node 22). The real-Chrome E2E lane also passed on Ubuntu, macOS,
+and Windows, with no skipped tests.
 
 ### Package/install smoke
 
-Final `npm pack --json` succeeded with 29 package entries, a 141,969-byte
-tarball, and 327,750 bytes of unpacked content.
+Final `npm pack --json` succeeded with 29 package entries, an approximately
+142 kB tarball, and approximately 328 kB of unpacked content.
 The bin entry was executable (`0755`),
 CONTRIBUTING/docs/runtime files were included, and `node_modules` was excluded.
 
@@ -163,6 +164,6 @@ The manual report captured seven browser/runtime/console findings, two failed re
 1. Improve the report's explicitly low-confidence temporal correlation with stronger CDP initiator evidence.
 2. Add redirect-chain and duplicate-occurrence normalization; request durations and initiator locations are already recorded.
 3. Add contenteditable and select/combobox support only where fixtures prove the semantics; stdin fill is now available for secret values.
-4. Confirm the newly added Windows real-Chrome lane in public CI; local Windows
-   ACL inspection remains explicitly outside the POSIX-mode privacy check.
+4. Expand remote-endpoint coverage; Windows state diagnosis already keeps ACL
+   inspection explicitly outside the POSIX-mode privacy check.
 5. Measure diagnosis time and report usefulness on representative open-source local apps before expanding automation verbs.
