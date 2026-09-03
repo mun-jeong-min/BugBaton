@@ -234,6 +234,14 @@ async function waitForMonitorTarget(stateDir, targetId) {
   );
 }
 
+async function waitForPageSelector(cdp, selector) {
+  await poll(
+    `page selector ${selector}`,
+    () => cdp.send("Runtime.evaluate", { expression: `document.readyState === "complete" && Boolean(document.querySelector(${JSON.stringify(selector)}))`, returnByValue: true }),
+    (result) => result.result?.value === true,
+  );
+}
+
 function referenceFor(snapshot, name, role) {
   const node = snapshot.nodes.find((candidate) => candidate.name === name && (!role || candidate.role === role));
   assert.ok(node, `snapshot should contain ${role ? `${role} ` : ""}${JSON.stringify(name)}`);
@@ -860,6 +868,7 @@ test("capture records manual actions, writes evidence, and stops its session", {
     const privateValue = "CAPTURE_INPUT_MUST_NOT_PERSIST";
     await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
       await cdp.send("Runtime.enable");
+      await waitForPageSelector(cdp, "#request-http-error");
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#request-http-error').click()" });
       await delay(300);
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#message').focus()" });
