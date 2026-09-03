@@ -42,9 +42,9 @@ writing in owned text and paths.
 
 ```console
 $ npm run test:e2e
-✔ real Chrome completes the diagnosis and report workflow (13453.643042ms)
-✔ capture records manual actions, writes evidence, and stops its session (8720.390291ms)
-✔ demo refuses an empty success claim and accepts a captured failure (7364.457416ms)
+✔ real Chrome completes the diagnosis and report workflow (13606.799125ms)
+✔ capture records manual actions, writes evidence, and stops its session (8711.8415ms)
+✔ demo refuses an empty success claim and accepts a captured failure (7349.811708ms)
 tests 3; pass 3; fail 0
 ```
 
@@ -86,7 +86,8 @@ End-to-end assertions include:
 - browser log timestamps remain in a plausible wall-clock range rather than
   inheriting an incorrect milliseconds conversion.
 - automatic capture port selection and a post-report receipt proving monitor and
-  owned-browser shutdown.
+  owned-browser shutdown; browser completion requires both the CDP endpoint and
+  the recorded Chrome process to exit.
 - bounded title/expected/actual claim fields rendered above the evidence timeline,
   with oversize claims rejected before session state is created.
 - the packaged demo refuses a false-positive success when no action-to-failure

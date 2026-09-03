@@ -395,7 +395,7 @@ test("real Chrome completes the diagnosis and report workflow", {
       "--deterministic",
     ];
     if (process.env.CHROME_PATH) launchArgs.push("--chrome", process.env.CHROME_PATH);
-    const launched = await bugbaton(launchArgs, { timeout: 30_000 });
+    const launched = await bugbaton(launchArgs, { timeout: 45_000 });
     chromePid = launched.chromePid;
     monitorPid = launched.monitor.pid;
     assert.equal(launched.endpoint, `http://127.0.0.1:${cdpPort}`);
@@ -825,7 +825,7 @@ test("real Chrome completes the diagnosis and report workflow", {
 });
 
 test("capture records manual actions, writes evidence, and stops its session", {
-  timeout: 45_000,
+  timeout: 60_000,
 }, async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "bugbaton-capture-e2e-"));
   const stateDir = join(temporaryRoot, "state");
@@ -838,7 +838,7 @@ test("capture records manual actions, writes evidence, and stops its session", {
   try {
     const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "6", "--output", reportDir, "--title", "HTTP request fails", "--expected", "The request succeeds.", "--actual", "The endpoint returns HTTP 503."];
     if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
-    const capturePromise = runProcess(process.execPath, args, { timeout: 35_000 });
+    const capturePromise = runProcess(process.execPath, args, { timeout: 50_000 });
     const session = await poll(
       "capture session",
       () => readOptionalJson(join(stateDir, "session.json")),
@@ -862,8 +862,15 @@ test("capture records manual actions, writes evidence, and stops its session", {
       await cdp.send("Runtime.enable");
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#request-http-error').click()" });
       await delay(300);
-      await cdp.send("Runtime.evaluate", { expression: `(()=>{const input=document.querySelector('#message');input.value=${JSON.stringify(privateValue)};input.dispatchEvent(new Event('input',{bubbles:true}));})()` });
-      await delay(400);
+      await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#message').focus()" });
+      await cdp.send("Input.insertText", { text: privateValue });
+      await poll(
+        "capture browser click and input events",
+        async () => (await readFile(join(stateDir, "events.jsonl"), "utf8")).split("\n").filter(Boolean).map((line) => JSON.parse(line)),
+        (events) => events.some((event) => event.kind === "user-action" && event.action === "click")
+          && events.some((event) => event.kind === "user-action" && event.action === "input" && event.textLength === privateValue.length),
+        4_000,
+      );
       await cdp.send("Runtime.evaluate", { expression: "document.querySelector('#message').value=''" });
     });
 

@@ -344,7 +344,7 @@ async function commandLaunch(parsed, paths, { captureActions = false } = {}) {
   const launched = launchChrome(binary, { port, profile, url: parsed.options.url, headless: parsed.options.headless, deterministic: parsed.options.deterministic });
   let version;
   try {
-    version = await waitForChrome(endpoint, 20_000);
+    version = await waitForChrome(endpoint, 30_000);
   } catch (error) {
     try { process.kill(launched.pid, "SIGTERM"); } catch {}
     throw codedError("CDP_STARTUP_FAILED", `Chrome did not expose CDP at ${endpoint}`, {
@@ -401,12 +401,12 @@ async function waitForEndpointExit(endpoint, timeoutMs = 5_000) {
 
 async function closeOwnedChrome(session) {
   if (session?.source !== "launch") return { owned: false, closed: false, reason: "external-browser" };
-  if (!await pidAlive(session.chromePid)) return { owned: true, closed: true, alreadyStopped: true, pid: session.chromePid };
   let version;
   try {
     version = await browserVersion(session.endpoint);
   } catch {
-    return { owned: true, closed: false, pid: session.chromePid, reason: "endpoint-unreachable" };
+    const processExited = await waitForPidExit(session.chromePid, 5_000);
+    return { owned: true, closed: processExited, endpointClosed: true, processExited, pid: session.chromePid, reason: processExited ? null : "endpoint-unreachable-process-alive" };
   }
   if (!session.browserInstanceId || browserInstanceId(version) !== session.browserInstanceId) {
     return { owned: true, closed: false, pid: session.chromePid, reason: "browser-identity-mismatch" };
@@ -416,8 +416,13 @@ async function closeOwnedChrome(session) {
     await cdp.send("Browser.close").catch(() => {});
     cdp.close();
   } catch {}
-  const closed = await waitForEndpointExit(session.endpoint);
-  return { owned: true, closed, pid: session.chromePid, reason: closed ? null : "close-timeout" };
+  const [endpointClosed, processExited] = await Promise.all([
+    waitForEndpointExit(session.endpoint, 8_000),
+    waitForPidExit(session.chromePid, 8_000),
+  ]);
+  const closed = endpointClosed && processExited;
+  const reason = closed ? null : !endpointClosed ? "endpoint-close-timeout" : "process-exit-timeout";
+  return { owned: true, closed, endpointClosed, processExited, pid: session.chromePid, reason };
 }
 
 async function commandStop(parsed, paths) {
