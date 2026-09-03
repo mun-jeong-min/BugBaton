@@ -37,7 +37,7 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- chroma demo
+npm exec --yes --package=github:mun-jeong-min/Chroma#15c4ce0 -- chroma demo
 ```
 
 Follow the three steps in the Chrome window, then press Enter. Chroma captures
@@ -68,7 +68,7 @@ window. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/Chroma#559cb4f -- \
+npm exec --yes --package=github:mun-jeong-min/Chroma#15c4ce0 -- \
   chroma capture --url http://127.0.0.1:3000 \
   --title "Checkout fails after Save" \
   --expected "The order is saved." \
@@ -148,7 +148,7 @@ No runtime npm dependencies are required.
 Until a release is published, install the current main branch directly:
 
 ```sh
-npm install --global github:mun-jeong-min/Chroma#559cb4f
+npm install --global github:mun-jeong-min/Chroma#15c4ce0
 chroma --version
 ```
 
