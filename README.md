@@ -1,6 +1,7 @@
 # BugBaton
 
 [![CI](https://github.com/mun-jeong-min/BugBaton/actions/workflows/ci.yml/badge.svg)](https://github.com/mun-jeong-min/BugBaton/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/bugbaton.svg)](https://www.npmjs.com/package/bugbaton)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 22+](https://img.shields.io/badge/node-%3E%3D22-43853d.svg)](package.json)
 
@@ -48,7 +49,7 @@ Run the packaged local-only demo. It needs no existing app, clone, account, or
 global install:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#6e17333 -- bugbaton demo
+npm exec --yes --package=bugbaton -- bugbaton demo
 ```
 
 Follow the three steps in the Chrome window, then press Enter. BugBaton captures
@@ -79,7 +80,7 @@ window. Every command also has a versioned `--json` envelope.
 Start your local app, replace the URL, and run the same capture loop:
 
 ```sh
-npm exec --yes --package=github:mun-jeong-min/BugBaton#6e17333 -- \
+npm exec --yes --package=bugbaton -- \
   bugbaton capture --url http://127.0.0.1:3000 \
   --title "Checkout fails after Save" \
   --expected "The order is saved." \
@@ -89,9 +90,9 @@ npm exec --yes --package=github:mun-jeong-min/BugBaton#6e17333 -- \
 The optional claim appears above the evidence timeline, so a recipient sees what
 was expected, what happened, and then the browser evidence supporting it.
 
-> **Pre-release:** install directly from GitHub for now. The full local
-> lane is verified on Chrome 152/macOS. Public CI passes the real-Chrome lane on
-> Linux, macOS, and Windows; the first npm release is next.
+The published package contains no runtime dependencies. The full local lane is
+verified on Chrome 152/macOS, and public CI passes the real-Chrome lane on Linux,
+macOS, and Windows.
 
 ## Why this instead of another browser controller?
 
@@ -156,10 +157,8 @@ No runtime npm dependencies are required.
 
 ## Install
 
-Until a release is published, install the current main branch directly:
-
 ```sh
-npm install --global github:mun-jeong-min/BugBaton#6e17333
+npm install --global bugbaton
 bugbaton --version
 ```
 
@@ -178,8 +177,7 @@ Or run without installing:
 node bin/bugbaton.js --help
 ```
 
-The package name `bugbaton` is intended for the first npm release but is not
-published yet.
+The npm package and executable are both named `bugbaton`.
 
 ## Reuse a signed-in development profile
 
@@ -362,16 +360,16 @@ npm run test:e2e
 
 The fixture is a dependency-free local app with deterministic controls for click/fill/press, console error, uncaught exception, HTTP 503, and transport disconnect. The [verification plan](docs/verification-plan.md) defines the real-Chrome evidence required before release; [validation results](docs/validation.md) record the latest run.
 
-The [international launch scorecard](docs/launch-scorecard.md) keeps the
-release threshold and remaining distribution blocker visible.
+The [international launch scorecard](docs/launch-scorecard.md) records the
+evidence behind each launch-readiness score.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the product boundary, test ladder,
 and evidence expected in a change.
 
 ## Project status
 
-This is an MVP under active validation. The next priorities are an npm release,
-independent first-use testing, higher-confidence action/failure correlation,
-and redirect and duplicate normalization.
+Version 0.1.0 is the first public MVP. The next priorities are independent
+first-use testing, higher-confidence action/failure correlation, and redirect
+and duplicate normalization.
 Contributions that sharpen diagnosis or evidence handoff are more valuable than
 adding broad automation verbs.

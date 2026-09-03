@@ -4,7 +4,7 @@
   "description": "Capture a browser bug once and pass a private, verifiable evidence bundle",
   "type": "module",
   "bin": {
-    "bugbaton": "./bin/bugbaton.js"
+    "bugbaton": "bin/bugbaton.js"
   },
   "files": [
     "bin",

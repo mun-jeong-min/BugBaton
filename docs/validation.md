@@ -4,7 +4,8 @@ Date: 2026-09-03<br>
 Environment: macOS (arm64), Node.js v26.0.0, npm 11.12.1<br>
 Browser: Google Chrome 152.0.7977.75, CDP protocol 1.3
 
-This record captures the latest local evidence for the BugBaton MVP. No package was published and no external system was mutated.
+This record captures the release evidence for the BugBaton 0.1.0 MVP, including
+the public package and matching GitHub release.
 
 ## Outcome
 
@@ -100,7 +101,7 @@ README/help edits. This proves dynamic ports, browser/session state, evidence,
 artifacts, and cleanup do not cross streams. A listener probe after the
 concurrent run found no Chrome/Chromium/BugBaton listener.
 
-The [public GitHub Actions run](https://github.com/mun-jeong-min/BugBaton/actions/runs/33706985107)
+The [public GitHub Actions run](https://github.com/mun-jeong-min/BugBaton/actions/runs/33707133322)
 passed the complete quality matrix on Ubuntu (Node 22 and 24), macOS (Node 22),
 and Windows (Node 22). The real-Chrome E2E lane also passed on Ubuntu, macOS,
 and Windows, with no skipped tests.
@@ -116,6 +117,11 @@ A final production-only local install into an isolated `/tmp` prefix succeeded
 in 195ms with one package and no runtime dependencies. The installed binary then
 passed `bugbaton --version` (`0.1.0`), top-level help, read-only
 `bugbaton doctor --json`, and `bugbaton verify` against the committed sample.
+
+The public `bugbaton@0.1.0` registry readback returned the expected version and
+tarball metadata. A fresh install by package name into an empty temporary prefix
+then passed version, help, doctor, and committed-sample verification without
+using the repository checkout as the executable source.
 
 The packaged demo now separates bundle integrity from demonstration success. An
 empty `bugbaton demo --headless --deterministic --duration 1` run writes the

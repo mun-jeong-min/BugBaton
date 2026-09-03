@@ -485,7 +485,7 @@ explicit privacy boundary, Linux/macOS real-Chrome CI, and an honest comparison
 with established alternatives. Its strongest shareable object is the report,
 not the command surface.
 
-The naming blocker is now resolved, leaving one release blocker:
+The naming and install-path blockers are now resolved:
 
 1. **Resolved: the former brand was crowded.** Homebrew already installs an
    unrelated `chroma` executable, and ChromaDB's official documentation also
@@ -493,13 +493,12 @@ The naming blocker is now resolved, leaving one release blocker:
    `bugbaton`; a September 3 check found no exact GitHub repository, npm package,
    or Homebrew formula using that name. [Homebrew `chroma`](https://formulae.brew.sh/formula/chroma)
    and [ChromaDB CLI installation](https://docs.trychroma.com/cli/install)
-2. **Open: the install path is pre-release.** There is no npm release yet, so the first
-   experience requires a long GitHub-pinned `npm exec` command. That is useful for
-   reproducibility but weak for copying from Reddit, Hacker News, or a README.
+2. **Resolved: the install path is short and public.** The `bugbaton` package is
+   published on npm, so the demo can be copied from Reddit, Hacker News, or the
+   README as `npm exec --yes --package=bugbaton -- bugbaton demo`.
 
-Recommended launch order: publish a signed/tagged npm release, preserve the
-30-second demo as the first command, then launch with one real report and one
-sentence about the handoff job.
+The release preserves the 30-second demo as the first command and pairs it with
+one real report and one sentence about the handoff job.
 The repository should remain English-only for the international audience. A
 separate Korean community post can localize the explanation without introducing
 parallel in-repository copy.

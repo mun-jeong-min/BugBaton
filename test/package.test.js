@@ -12,7 +12,7 @@ test("package surface and README stay aligned with the public CLI", async () => 
   const bin = new URL("../bin/bugbaton.js", import.meta.url);
   const binStat = await stat(bin);
 
-  assert.equal(packageJson.bin.bugbaton, "./bin/bugbaton.js");
+  assert.equal(packageJson.bin.bugbaton, "bin/bugbaton.js");
   assert.equal(packageJson.description, "Capture a browser bug once and pass a private, verifiable evidence bundle");
   assert.equal(packageJson.dependencies, undefined, "the MVP must remain zero-runtime-dependency");
   assert.equal(packageJson.scripts.prepublishOnly, "npm run check");

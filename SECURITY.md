@@ -16,9 +16,9 @@ cookies, private URLs, screenshots, page text, and user data.
 
 ## Supported Versions
 
-Until the first npm release, the latest commit on `main` is the only supported
-revision. Security fixes will be documented in GitHub releases once versioned
-packages are published.
+The latest `0.1.x` release and the latest commit on `main` are supported.
+Security fixes are documented in GitHub releases and published as versioned npm
+packages.
 
 ## Security Boundary
 
