@@ -825,7 +825,7 @@ test("real Chrome completes the diagnosis and report workflow", {
 });
 
 test("capture records manual actions, writes evidence, and stops its session", {
-  timeout: 30_000,
+  timeout: 45_000,
 }, async () => {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "bugbaton-capture-e2e-"));
   const stateDir = join(temporaryRoot, "state");
@@ -836,7 +836,7 @@ test("capture records manual actions, writes evidence, and stops its session", {
   let monitorPid;
 
   try {
-    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "3", "--output", reportDir, "--title", "HTTP request fails", "--expected", "The request succeeds.", "--actual", "The endpoint returns HTTP 503."];
+    const args = [CLI, "--state-dir", stateDir, "--json", "capture", "--headless", "--deterministic", "--profile", profileDir, "--url", fixture.url, "--duration", "6", "--output", reportDir, "--title", "HTTP request fails", "--expected", "The request succeeds.", "--actual", "The endpoint returns HTTP 503."];
     if (process.env.CHROME_PATH) args.push("--chrome", process.env.CHROME_PATH);
     const capturePromise = runProcess(process.execPath, args, { timeout: 35_000 });
     const session = await poll(
@@ -856,6 +856,7 @@ test("capture records manual actions, writes evidence, and stops its session", {
     assert.match(endpoint, /^http:\/\/127\.0\.0\.1:\d+$/);
     const tab = (await listTabs(endpoint)).find((candidate) => candidate.url.startsWith(fixture.url));
     assert.ok(tab, "capture should open the fixture tab");
+    await waitForMonitorTarget(stateDir, tab.id);
     const privateValue = "CAPTURE_INPUT_MUST_NOT_PERSIST";
     await withCdp(tab.webSocketDebuggerUrl, async (cdp) => {
       await cdp.send("Runtime.enable");

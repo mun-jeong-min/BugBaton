@@ -42,9 +42,9 @@ writing in owned text and paths.
 
 ```console
 $ npm run test:e2e
-✔ real Chrome completes the diagnosis and report workflow (13400.42325ms)
-✔ capture records manual actions, writes evidence, and stops its session (5620.172ms)
-✔ demo refuses an empty success claim and accepts a captured failure (7261.429667ms)
+✔ real Chrome completes the diagnosis and report workflow (13453.643042ms)
+✔ capture records manual actions, writes evidence, and stops its session (8720.390291ms)
+✔ demo refuses an empty success claim and accepts a captured failure (7364.457416ms)
 tests 3; pass 3; fail 0
 ```
 
